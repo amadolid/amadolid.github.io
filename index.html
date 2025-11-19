@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Alexie Madolid</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #f5f7fa 0%, #e8ecef 100%);
+        color: #333;
+        line-height: 1.7;
+        padding: 20px 0;
+      }
+
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 50px 40px;
+        background-color: white;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+        border-radius: 12px;
+      }
+
+      h1 {
+        text-align: center;
+        color: #648276;
+        font-size: 2.8em;
+        margin-bottom: 15px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+      }
+
+      .subtitle {
+        text-align: center;
+        color: #888;
+        font-size: 1.1em;
+        margin-bottom: 50px;
+        font-weight: 400;
+      }
+
+      .job {
+        margin-bottom: 60px;
+        padding-bottom: 40px;
+        border-bottom: 2px solid #f0f0f0;
+        transition: transform 0.2s ease;
+      }
+
+      .job:last-child {
+        border-bottom: none;
+      }
+
+      .job:hover {
+        transform: translateX(5px);
+      }
+
+      .job-header {
+        margin-bottom: 25px;
+      }
+
+      .company-title {
+        color: #2c3e50;
+        font-size: 1.5em;
+        font-weight: 600;
+        margin-bottom: 8px;
+        line-height: 1.4;
+      }
+
+      .company-name {
+        color: #648276;
+        font-weight: 700;
+      }
+
+      .location {
+        color: #999;
+        font-size: 0.9em;
+        margin-bottom: 5px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .location::before {
+        content: "📍";
+        font-size: 0.9em;
+      }
+
+      .team-date {
+        color: #666;
+        font-size: 0.95em;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        margin-top: 5px;
+      }
+
+      .team-date::before {
+        content: "📅";
+        font-size: 0.9em;
+      }
+
+      .responsibilities {
+        background: linear-gradient(135deg, #f0f8f8 0%, #e8f4f4 100%);
+        border-left: 5px solid #648276;
+        border-radius: 0 8px 8px 0;
+        padding: 25px 30px;
+        margin: 25px 0;
+        color: #444;
+        line-height: 1.9;
+        font-size: 0.98em;
+        box-shadow: 0 2px 8px rgba(100, 130, 118, 0.08);
+      }
+
+      .section-title {
+        color: #648276;
+        font-size: 1.15em;
+        font-weight: 600;
+        margin-bottom: 15px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .projects {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-top: 25px;
+      }
+
+      .project {
+        background: linear-gradient(135deg, #fafbfc 0%, #f5f7f9 100%);
+        padding: 20px;
+        border-left: 4px solid #648276;
+        border-radius: 0 8px 8px 0;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      }
+
+      .project:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 16px rgba(100, 130, 118, 0.15);
+        border-left-width: 6px;
+      }
+
+      .project-name {
+        color: #648276;
+        font-size: 1.15em;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+
+      .project-tech {
+        color: #777;
+        font-size: 0.85em;
+        font-style: italic;
+        margin-bottom: 12px;
+        line-height: 1.6;
+      }
+
+      .project-description {
+        color: #555;
+        font-size: 0.95em;
+        line-height: 1.6;
+      }
+
+      .achievement-section {
+        margin-top: 60px;
+        padding-top: 40px;
+        border-top: 3px solid #648276;
+      }
+
+      .achievement-title {
+        color: #648276;
+        font-size: 2em;
+        margin-bottom: 30px;
+        text-align: center;
+        font-weight: 700;
+      }
+
+      .achievement {
+        background: linear-gradient(135deg, #fafbfc 0%, #f5f7f9 100%);
+        padding: 25px;
+        margin-bottom: 20px;
+        border-left: 5px solid #648276;
+        border-radius: 0 8px 8px 0;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      }
+
+      .achievement:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 12px rgba(100, 130, 118, 0.12);
+      }
+
+      .achievement h3 {
+        color: #648276;
+        font-size: 1.25em;
+        margin-bottom: 12px;
+        font-weight: 700;
+      }
+
+      .achievement p {
+        color: #555;
+        font-size: 0.98em;
+        line-height: 1.7;
+      }
+
+      a {
+        color: #648276;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        border-bottom: 1px solid transparent;
+      }
+
+      a:hover {
+        color: #4a6258;
+        border-bottom: 1px solid #648276;
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          padding: 30px 20px;
+          border-radius: 0;
+        }
+
+        h1 {
+          font-size: 2.2em;
+        }
+
+        .projects {
+          grid-template-columns: 1fr;
+        }
+
+        .job:hover,
+        .achievement:hover {
+          transform: none;
+        }
+      }
+
+      @media print {
+        body {
+          background: white;
+        }
+
+        .container {
+          box-shadow: none;
+          padding: 20px;
+        }
+
+        .job:hover,
+        .project:hover,
+        .achievement:hover {
+          transform: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Alexie Madolid</h1>
+      <div class="subtitle">Work Experience & Achievements</div>
+
+      <div class="job">
+        <div class="job-header">
+          <div class="company-title">
+            <span class="company-name">BCS Technology:</span> Solutions
+            Architect (Full Stack)
+          </div>
+          <div class="location">
+            Corporate Plaza, Tower 2, Unit 1712, High Street South, Taguig,
+            Metro Manila, 1635
+          </div>
+          <div class="team-date">BCSAI Project • Nov 15, 2021 - Present</div>
+        </div>
+
+        <div class="responsibilities">
+          As Solutions Architect, I lead the development of AI-powered
+          enterprise solutions, building consolidated AI assistance services
+          with role management and analytics on cloud infrastructure. I
+          pioneered the adoption of Jac/Jaclang/Jaseci, a new Python-based
+          programming language with scalable runtime capabilities, and
+          implemented it across our platforms. This work enabled the creation of
+          ZeroShot Bot, an AI agent builder that allows users to create AI
+          assistants without any coding skills. I continue to maintain and
+          enhance Commchain, our enterprise blockchain solution for commodity
+          logistics and trade settlement, while developing intelligent
+          monitoring scripts that automatically track system health and generate
+          tickets for known issues.
+        </div>
+
+        <div class="section-title">Key Projects</div>
+        <div class="projects">
+          <div class="project">
+            <div class="project-name">BCSAI Assist</div>
+            <div class="project-tech">
+              Python (FastAPI), Azure (AI Foundry, AI Search, Cosmos DB, Entra
+              ID, App Config, App Service)
+            </div>
+            <div class="project-description">
+              Consolidated AI assistance service with role management and
+              analytics capabilities
+            </div>
+          </div>
+          <div class="project">
+            <div class="project-name">Jac / Jaclang / Jaseci / Jac Cloud</div>
+            <div class="project-tech">
+              Python (FastAPI, Django), NoSQL (MongoDB), SQL (PostgreSQL)
+            </div>
+            <div class="project-description">
+              New programming language based on Python with scalable runtime
+              stack. Repository:
+              <a href="https://github.com/jaseci-labs/jaseci"
+                >jaseci-labs/jaseci</a
+              >. Used in ZeroShot Bot.
+            </div>
+          </div>
+          <div class="project">
+            <div class="project-name">ZeroShot Bot</div>
+            <div class="project-tech">
+              Jac, Python (FastAPI, Django), NoSQL (MongoDB), SQL (PostgreSQL)
+            </div>
+            <div class="project-description">
+              Zero-shot AI agent builder platform
+            </div>
+          </div>
+          <div class="project">
+            <div class="project-name">Commchain v1 & v2</div>
+            <div class="project-tech">
+              Java (Spring Boot), SQL (PostgreSQL), Corda 4
+            </div>
+            <div class="project-description">
+              Enterprise solution for transforming bulk commodity logistics and
+              trade settlement
+            </div>
+          </div>
+          <div class="project">
+            <div class="project-name">Monitoring Script</div>
+            <div class="project-tech">Bash</div>
+            <div class="project-description">
+              Automated monitoring for all Commchain services with Jira ticket
+              creation for known issues
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="job">
+        <div class="job-header">
+          <div class="company-title">
+            <span class="company-name">Samsung Electronics:</span> Software
+            Engineer CL2-II (Java Developer)
+          </div>
+          <div class="location">
+            9th Floor Science Hub Tower 4, McKinley Cyberpark, Fort Bonifacio,
+            Taguig, 1634 Metro Manila
+          </div>
+          <div class="team-date">
+            Mobile Services Team • Dec 9, 2019 - Nov 26, 2021
+          </div>
+        </div>
+
+        <div class="responsibilities">
+          I maintained and improved existing features through comprehensive bug
+          fixing while developing new capabilities for our mobile services. I
+          provided production support and refactored code to address Sonar
+          warnings and improve code coverage. I also enhanced database
+          performance, conducted thorough code reviews, and handled various
+          DevOps tasks including Jenkins script debugging.
+        </div>
+
+        <div class="section-title">Key Projects</div>
+        <div class="projects">
+          <div class="project">
+            <div class="project-name">
+              Knox Mobile Enrollment / Knox Configure
+            </div>
+            <div class="project-tech">Java (Spring Boot), NoSQL (MongoDB)</div>
+            <div class="project-description">
+              Enterprise solution for configuring large numbers of devices to
+              their MDM for corporate use
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="job">
+        <div class="job-header">
+          <div class="company-title">
+            <span class="company-name">Mynt:</span> Tech Lead / Java Software
+            Engineer (Full Stack)
+          </div>
+          <div class="location">
+            32nd Floor The Trade and Financial Tower, 7th Avenue corner 32nd
+            Street, Bonifacio Global City, Taguig City
+          </div>
+          <div class="team-date">
+            Cluster 2 LoadSales Team • Nov 5, 2018 - Nov 28, 2019
+          </div>
+        </div>
+
+        <div class="responsibilities">
+          As Tech Lead, I handled everything from bug fixing and developing
+          full-stack features to providing critical production support. I took
+          on the challenge of rearchitecting our database and process flows to
+          improve code maintainability and reliability. I enhanced database
+          performance to handle larger transaction volumes, conducted code
+          reviews, and developed tools to streamline debugging processes. I also
+          managed DevOps tasks including production deployments, log extraction,
+          and performance monitoring.
+        </div>
+
+        <div class="section-title">Key Projects</div>
+        <div class="projects">
+          <div class="project">
+            <div class="project-name">A+ Whitelisting</div>
+            <div class="project-tech">Java (Spring Boot), SQL (MySQL)</div>
+            <div class="project-description">
+              Traffic switch for different platforms
+            </div>
+          </div>
+          <div class="project">
+            <div class="project-name">LoadSales Buyload API</div>
+            <div class="project-tech">Java (Mule ESB)</div>
+            <div class="project-description">
+              GCash buyload API and load balancer
+            </div>
+          </div>
+          <div class="project">
+            <div class="project-name">Knowhere Portal</div>
+            <div class="project-tech">
+              Java (Spring Boot), SQL (MySQL), HTML, CSS (Bootstrap 4), JS
+              (RNB.js)
+            </div>
+            <div class="project-description">
+              User, GCash buyload wallet, GCash buyload promo, GCash buyload
+              capping, and GCash buyload product list management
+            </div>
+          </div>
+          <div class="project">
+            <div class="project-name">LoadSales Report Service</div>
+            <div class="project-tech">Java (Spring Boot), SQL (MySQL)</div>
+            <div class="project-description">
+              Report emailer for transaction statistics
+            </div>
+          </div>
+          <div class="project">
+            <div class="project-name">LoadSales Report Service v2</div>
+            <div class="project-tech">Java (Spring Boot), SQL (MySQL)</div>
+            <div class="project-description">
+              Revamp of report service with integration of LoadSales Bot
+            </div>
+          </div>
+          <div class="project">
+            <div class="project-name">Knowhere Portal Chronicles</div>
+            <div class="project-tech">
+              Java (Spring Boot), SQL (MySQL), HTML, CSS (Bootstrap 4), JS
+              (RNB.js)
+            </div>
+            <div class="project-description">
+              Portal add-ons: hourly/daily monitoring for buyload transaction
+              statuses, dynamic generation of transaction statistics
+            </div>
+          </div>
+          <div class="project">
+            <div class="project-name">LoadSales Telegram Bot</div>
+            <div class="project-tech">
+              Java (Spring Boot), MySQL, Telegram Bot
+            </div>
+            <div class="project-description">
+              Integration of Telegram bot for remote monitoring
+            </div>
+          </div>
+          <div class="project">
+            <div class="project-name">LoadSales Microservice v2</div>
+            <div class="project-tech">Java (Spring Boot), SQL (MySQL)</div>
+            <div class="project-description">
+              Backend for GCash buyload with integration of portal configs and
+              business rules
+            </div>
+          </div>
+          <div class="project">
+            <div class="project-name">LoadSales Microservice v3</div>
+            <div class="project-tech">Java (Spring Boot), SQL (MySQL)</div>
+            <div class="project-description">
+              Revamp of LoadSales Microservice v2 with integration of Cashier
+              Page (dynamic payment option)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="job">
+        <div class="job-header">
+          <div class="company-title">
+            <span class="company-name">GoTech Solutions:</span> Software
+            Engineer 2 (Full Stack)
+          </div>
+          <div class="location">
+            15th Floor PearlBank Center, 146 Valero St., Salcedo Village, Makati
+            City
+          </div>
+          <div class="team-date">
+            Innovation Department • Jul 18, 2016 - Apr 6, 2018
+          </div>
+        </div>
+
+        <div class="responsibilities">
+          I demonstrated versatility by fixing bugs, developing full-stack
+          projects, and reverse engineering existing projects without
+          documentation or senior supervision. I conducted code reviews, reverse
+          engineered unknown scripts to integrate and improve them, and
+          developed tools for efficient debugging. I quickly adapted to new
+          technologies with minimal supervision and handled the full spectrum of
+          DevOps tasks from production deployment to log extraction and
+          performance monitoring.
+        </div>
+
+        <div class="section-title">Key Projects</div>
+        <div class="projects">
+          <div class="project">
+            <div class="project-name">SK / YQC / YORI / KIYO</div>
+            <div class="project-tech">
+              Angular JS, PHP, HTML, CSS, JS, SQL (MySQL)
+            </div>
+            <div class="project-description">
+              Four web-based online casinos with back offices
+            </div>
+          </div>
+          <div class="project">
+            <div class="project-name">Client System iOS</div>
+            <div class="project-tech">Swift</div>
+            <div class="project-description">Mobile online casino</div>
+          </div>
+          <div class="project">
+            <div class="project-name">CRM</div>
+            <div class="project-tech">
+              Python, HTML, CSS, JS, SQL (PostgreSQL)
+            </div>
+            <div class="project-description">
+              Web-based customer relationship management
+            </div>
+          </div>
+          <div class="project">
+            <div class="project-name">SkyWind API</div>
+            <div class="project-tech">Java (Mule ESB)</div>
+            <div class="project-description">Game API integration</div>
+          </div>
+          <div class="project">
+            <div class="project-name">Halcyon</div>
+            <div class="project-tech">
+              Python, HTML, CSS, JS, SQL (PostgreSQL)
+            </div>
+            <div class="project-description">
+              Web-based medical system for seafarers and other offshore-related
+              jobs
+            </div>
+          </div>
+          <div class="project">
+            <div class="project-name">Domain Monitoring</div>
+            <div class="project-tech">
+              Java, SQL (Oracle SQL), HTML, CSS, JS
+            </div>
+            <div class="project-description">Automated monitoring system</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="job">
+        <div class="job-header">
+          <div class="company-title">
+            <span class="company-name">One Network E-Commerce Inc:</span> OJT -
+            Game Developer (Full Stack)
+          </div>
+          <div class="location">
+            8th Floor Aseana One Building, Bradco St. Cor. Roxas Blvd., Aseana
+            City, Pasay
+          </div>
+          <div class="team-date">Design Department • Jun 1 - Sep 30, 2015</div>
+        </div>
+
+        <div class="responsibilities">
+          During my internship, I dove headfirst into game development, creating
+          multiple Android games through self-taught learning and hands-on
+          experimentation. This experience laid the foundation for my technical
+          skills and passion for software development.
+        </div>
+
+        <div class="section-title">Key Projects</div>
+        <div class="projects">
+          <div class="project">
+            <div class="project-name">Ezam / Alter Matter</div>
+            <div class="project-tech">C#, JS (Unity3D)</div>
+            <div class="project-description">Two Android games</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="achievement-section">
+        <h2 class="achievement-title">Additional Achievements</h2>
+
+        <div class="achievement">
+          <h3>PyBotchi - AI Agent Orchestrator</h3>
+          <p>
+            Open-source AI agent orchestration framework. View repository:
+            <a href="https://github.com/amadolid/pybotchi">
+              amadolid/pybotchi
+            </a>
+          </p>
+        </div>
+
+        <div class="achievement">
+          <h3>Code Debugger & Programming Algorithms Lecture</h3>
+          <p>Attended internal training and seminars at Samsung Electronics.</p>
+        </div>
+
+        <div class="achievement">
+          <h3>Multisys' Clash of Codes 2018 Champion</h3>
+          <p>
+            Winner of competitive programming competition. Read more:
+            <a
+              href="https://www.multisyscorp.com/news/multisys-clash-of-codes-showcases-ingenuity-of-filipino-it-experts"
+              >Multisys Article</a
+            >
+          </p>
+        </div>
+
+        <div class="achievement">
+          <h3>RNB.js</h3>
+          <p>
+            JavaScript-based framework for building single-page applications
+            that can be integrated into any web-based framework with routing
+            features. Used in production at Mynt's Knowhere Portal.
+          </p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

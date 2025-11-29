@@ -1,11 +1,1084 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>PyBotchi - AI Agent Orchestrator</title>
+    <link href="assets/prism-vsc-dark-plus.min.css" rel="stylesheet" />
+    <link href="assets/main.css" rel="stylesheet" />
+    <script src="assets/prism.min.js"></script>
+    <script src="assets/prism-bash.min.js"></script>
+    <script src="assets/prism-python.min.js"></script>
 </head>
+
 <body>
-    Hello PyBotchi
+    <div class="container">
+        <nav class="sidebar">
+            <div class="logo">
+                <h1>PyBotchi</h1>
+                <p>AI Agent Orchestrator</p>
+            </div>
+            <div class="nav-section">
+                <h3>Getting Started</h3>
+                <a href="#home" class="nav-link active">Home</a>
+                <a href="#installation" class="nav-link">Installation</a>
+                <a href="#quickstart" class="nav-link">Quick Start</a>
+            </div>
+            <div class="nav-section">
+                <h3>Core Features</h3>
+                <a href="#object-oriented" class="nav-link">Object-Oriented</a>
+                <a href="#life-cycle" class="nav-link">Life Cycle Hooks</a>
+                <a href="#workflows" class="nav-link">Workflows</a>
+                <a href="#tools" class="nav-link">Tools & Plugins</a>
+                <a href="#memory" class="nav-link">Memory Systems</a>
+            </div>
+            <div class="nav-section">
+                <h3>Advanced</h3>
+                <a href="#orchestration" class="nav-link">Orchestration Patterns</a>
+                <a href="#scaling" class="nav-link">Scaling & Performance</a>
+                <a href="#monitoring" class="nav-link">Monitoring</a>
+            </div>
+            <div class="nav-section">
+                <h3>Resources</h3>
+                <a href="#api" class="nav-link">API Reference</a>
+                <a href="#examples" class="nav-link">Examples</a>
+                <a href="#contributing" class="nav-link">Contributing</a>
+            </div>
+        </nav>
+        <main class="main-content">
+            <section id="home" class="content-section active">
+                <div class="hero">
+                    <h1>PyBotchi</h1>
+                    <p class="subtitle">Build scalable AI agent systems with ease</p>
+                    <p>A modern Python library for orchestrating multi-agent AI systems. Design and deploy agents that
+                        are inherently lightest, fastest, and most customizable. Leverage a modular, framework-agnostic,
+                        and scalable architecture to build intelligent agents that work together to solve complex
+                        problems.</p>
+
+                    <div class="cta-buttons">
+                        <a href="#installation" class="btn btn-primary">Get Started</a>
+                        <a href="https://github.com/amadolid/pybotchi" class="btn btn-secondary">View on GitHub</a>
+                    </div>
+                </div>
+
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🪶</div>
+                        <h3>Lightweight Architecture</h3>
+                        <p>The entire system is built upon a minimal foundation of just three core classes:
+                            <code>Action</code> (the
+                            central agent with a defined lifecycle), <code>Context</code> (the universal container
+                            for conversational
+                            state and metadata), and <code>LLM</code> (a singleton client for managing your model
+                            connection). This
+                            lean design minimizes overhead, ensuring extreme speed and efficiency.
+                        </p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🏗️</div>
+                        <h3>Object-Oriented Design</h3>
+                        <p>Achieves maximum customizability through a powerful Object-Oriented structure. All base
+                            classes inherit from Pydantic <code>BaseModel</code>, ensuring rigorous data validation
+                            and adherence to
+                            industry-standard type hinting. This foundation makes every component inherently overridable
+                            and extendable to precisely match complex requirements.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🎣</div>
+                        <h3>Action Lifecycle Hooks</h3>
+                        <p>The base <code>Action</code> class provides essential lifecycle events (hooks) that
+                            developers can easily override or catch. This allows for precise control over the agent's
+                            behavior at critical points—such as before execution, after execution, or upon
+                            failure—greatly simplifying state management, logging, and error handling.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">⚡</div>
+                        <h3>Highly Scalable</h3>
+                        <p>The system is built on an async-first architecture, maximizing concurrency and I/O
+                            efficiency. Leveraging this, along with its modularity and graph structure, the architecture
+                            is primed for distributed scaling. Agents can be deployed remotely or across different
+                            machines to isolate resources, optimize performance, and effortlessly handle massive,
+                            parallel workloads.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🧱</div>
+                        <h3>Truly Modular</h3>
+                        <p>Agents are developed as isolated, self-contained units. This means different teams can
+                            independently develop, improve, or modify specific agents without impacting the system's
+                            core logic. Any agent can function as a standalone unit, a subordinate in a workflow, or a
+                            Master Agent.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔗</div>
+                        <h3>Graph By Design</h3>
+                        <p>The architecture enforces a structured parent-child relationship for agent orchestration.
+                            Agents are declared within a graph-like structure, explicitly defining potential task flow
+                            and delegation paths. This structure provides clear visibility into system execution and
+                            state even during development, simplifying debugging, testing, and complex multi-agent
+                            reasoning.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🌍</div>
+                        <h3>Framework & Model Agnostic</h3>
+                        <p>The inherent Object-Oriented nature ensures true agnosticism. By prioritizing overridability
+                            in every base class, the library allows developers to bypass default implementations
+                            entirely, catering to any specific LLM client, third-party framework, or unique business
+                            requirement without architectural restriction.</p>
+                    </div>
+                </div>
+            </section>
+            <section id="installation" class="content-section">
+                <h2>Installation</h2>
+                <p>PyBotchi requires Python 3.12 or higher. Install using pip:</p>
+
+                <pre><code class="language-bash">pip install pybotchi</code></pre>
+
+                <h3>Optional Dependencies</h3>
+                <p>For additional features, install optional dependencies:</p>
+
+                <pre><code class="language-bash"># With grpc support
+pip install pybotchi[grpc]
+
+# With mcp support
+pip install pybotchi[mcp]
+
+# With both
+pip install pybotchi[grpc,mcp]</code></pre>
+
+                <h3>From Source</h3>
+                <p>To install the latest development version:</p>
+
+                <pre><code class="language-bash">git clone https://github.com/amadolid/pybotchi.git
+cd pybotchi
+pip install -e .
+# pip install -e .[grpc]
+# pip install -e .[mcp]
+# pip install -e .[grpc,mcp]</code></pre>
+
+                <div class="note">
+                    <strong>Note:</strong> It's recommended to use a virtual environment to avoid dependency conflicts.
+                </div>
+            </section>
+            <section id="quickstart" class="content-section">
+                <h2>Quick Start</h2>
+                <p>Get up and running with PyBotchi in minutes. Here's a simple example to create your first agent:</p>
+                <h3>Declare your base LLM</h3>
+                <div class="note">
+                    <strong>Note:</strong> By default, you can use classes that extend LangChain's BaseChatModel, such
+                    as AzureChatOpenAI.
+                    However, if you want to use a different AI library or framework for advanced tasks, you will likely
+                    need to customize the Context and Action classes to integrate those tools.<br>
+                </div>
+                <h5>This base LLM instance will be used for tool-selection (or child-selection).</h5>
+                <pre><code class="language-python">from langchain_openai import AzureChatOpenAI
+
+from pybotchi import LLM
+
+LLM.add(
+    base=AzureChatOpenAI(
+        api_key="{{CHAT_KEY}}",
+        azure_endpoint="{{CHAT_ENDPOINT}}",
+        azure_deployment="{{CHAT_DEPLOYMENT}}",
+        model="{{CHAT_MODEL}}",
+        api_version="{{CHAT_VERSION}}",
+        temperature={{CHAT_TEMPERATURE}},
+        stream_usage=True,
+    )
+)</code></pre>
+                <h3>Declare your master agent</h3>
+                <p>Get up and running with PyBotchi in minutes. Here's a simple example to create your first agent:</p>
+                <pre><code class="language-python">from pybotchi import Action, ActionReturn
+
+from pydantic import Field
+
+class GeneralChat(Action):
+    """Casual Generic Chat."""
+
+    class AnswerMathProlem(Action):
+        """Answer math problem."""
+
+        answer: str = Field(description="The answer to the math problem")
+
+        async def pre(self, context: Context) -> ActionReturn:
+            """Execute pre process."""
+            await context.add_response(self, self.answer)
+            return ActionReturn.GO
+
+
+    class Translate(Action):
+        """Translate query to requested language."""
+
+        translation: str = Field(description="The translation of the query")
+
+        async def pre(self, context: Context) -> ActionReturn:
+            """Execute pre process."""
+            await context.add_response(self, self.translation)
+            return ActionReturn.GO</code></pre>
+                <h3>Initialize your context</h3>
+                <div class="note">
+                    <strong>Note:</strong> The system prompt is required, even if it is empty. This ensures more secure
+                    prompting and provides a placeholder for your custom system prompt.
+                </div>
+                <pre><code class="language-python">from pybotchi import Context
+
+context = Context(
+    prompts=[
+        {
+            "role": "system",
+            "content": """
+You're an AI the can solve math problem and translate any request.
+
+Your primary focus is to prioritize tool usage and efficiently handle multiple tool calls, including invoking the same tool multiple times if necessary.
+Ensure that all relevant tools are effectively utilized and properly sequenced to accurately and comprehensively address the user's inquiry.
+""",
+        },
+        {
+            "role": "user",
+            "content": "4 x 4 and explain your answer in filipino",
+        },
+    ],
+)</code></pre>
+                <h3>Run your master agent</h3>
+                <p>Start your agent using asyncio.</p>
+                <pre><code class="language-python">from asyncio import run
+
+from pybotchi import graph
+
+async def main():
+    action, _ = await context.start(GeneralChat)
+    print(dumps(context.prompts, indent=4))
+    print(dumps(action.serialize(), indent=4))
+
+    general_chat_graph = await graph(GeneralChat)
+    print(dumps(action.serialize(), indent=4))
+
+run(main())
+                </code></pre>
+                <p>Result:</p>
+                <pre><code class="language-bash">[
+    {
+        "role": "system",
+        "content": "You're an AI the can solve math problem and translate any request.\n\nYour primary focus is to prioritize tool usage and efficiently handle multiple tool calls, including invoking the same tool multiple times if necessary.\nEnsure that all relevant tools are effectively utilized and properly sequenced to accurately and comprehensively address the user's inquiry."
+    },
+    {
+        "role": "user",
+        "content": "4 x 4 and explain your answer in filipino"
+    },
+    {
+        "content": "",
+        "role": "assistant",
+        "tool_calls": [
+            {
+                "id": "call_ea7e65251a02464ba1c60d403748dae4",
+                "function": {
+                    "name": "AnswerMathProlem",
+                    "arguments": "{\"answer\":\"4 x 4\"}"
+                },
+                "type": "function"
+            }
+        ]
+    },
+    {
+        "content": "4 x 4",
+        "role": "tool",
+        "tool_call_id": "call_ea7e65251a02464ba1c60d403748dae4"
+    },
+    {
+        "content": "",
+        "role": "assistant",
+        "tool_calls": [
+            {
+                "id": "call_fd071414f57d4320a2359be6e4a6497c",
+                "function": {
+                    "name": "Translate",
+                    "arguments": "{\"translation\":\"Ang 4 x 4 ay 16 dahil kapag minultiply mo ang apat sa apat, ang sagot ay labing anim.\"}"
+                },
+                "type": "function"
+            }
+        ]
+    },
+    {
+        "content": "Ang 4 x 4 ay 16 dahil kapag minultiply mo ang apat sa apat, ang sagot ay labing anim.",
+        "role": "tool",
+        "tool_call_id": "call_fd071414f57d4320a2359be6e4a6497c"
+    }
+]
+{
+    "name": "GeneralChat",
+    "args": {},
+    "usages": [
+        {
+            "name": "$tool",
+            "model": "gpt-4.1",
+            "usage": {
+                "input_tokens": 316,
+                "output_tokens": 76,
+                "total_tokens": 392,
+                "input_token_details": {
+                    "audio": 0,
+                    "cache_read": 0
+                },
+                "output_token_details": {
+                    "audio": 0,
+                    "reasoning": 0
+                }
+            }
+        }
+    ],
+    "actions": [
+        {
+            "name": "AnswerMathProlem",
+            "args": {
+                "answer": "4 x 4"
+            },
+            "usages": [],
+            "actions": []
+        },
+        {
+            "name": "Translate",
+            "args": {
+                "translation": "Ang 4 x 4 ay 16 dahil kapag minultiply mo ang apat sa apat, ang sagot ay labing anim."
+            },
+            "usages": [],
+            "actions": []
+        }
+    ]
+}
+flowchart TD
+__main__.GeneralChat.AnswerMathProlem[__main__.GeneralChat.AnswerMathProlem]
+__main__.GeneralChat[__main__.GeneralChat]
+__main__.GeneralChat.Translate[__main__.GeneralChat.Translate]
+__main__.GeneralChat --> __main__.GeneralChat.Translate
+__main__.GeneralChat --> __main__.GeneralChat.AnswerMathProlem</code></pre>
+                <h3>Mermaid-JS Flowchart</h3>
+                <img class="content-img" src="assets/mermaid.png" alt="mermaid.png" />
+            </section>
+            <section id="object-oriented" class="content-section">
+                <h2>OOP-Driven Agent Customization</h2>
+                <p>Customize your agent by utilizing <code>Object-Oriented Programming</code> practices</p>
+                <h3>Inheritance</h3>
+                <h4>Overrides & Extensions</h4>
+                <pre><code class="language-python">from typing import ClassVar
+
+from pybotchi import Action, graph
+
+class A1(Action):
+    """Doc 1."""
+
+class A2(Action):
+    """Doc 2."""
+
+# Declare Agent with A1 & A2 as child Actions
+class A0(Action):
+    """Maid doc."""
+
+    A1: ClassVar = A1
+    A2: ClassVar = A2
+
+    # OR
+    # class A1(A1):
+    #    pass
+    # class A2(A2):
+    #    pass
+
+    # Additional Agents
+    class A3(Action):
+        """Doc 3."""
+
+    class A4(Action):
+        """Doc 4."""
+
+    # override print method
+        def print(self) -> None:
+        """Print some value."""
+        print("A0")
+
+# Modify A0 docstring
+class B0(A0):
+    """Modified Main doc."""
+
+    # replace A1
+    class A1(Action):
+        """Different Doc 1."""
+
+    # extend A2 to add new child agent and replace docstring
+    class A2(A0.A2):
+        """Modified Doc 2."""
+
+        class A2Child1(Action):
+            """Child Doc 1."""
+
+    # remove A3
+    A3: ClassVar = None
+    
+    # override print method
+    def print(self) -> None:
+        """Print some value."""
+        print("B0")
+
+# Not recommended but it's supported
+# Remove A4 from A0 and this will propagate to every derived classes
+A0.remove_child("A4")
+</code></pre>
+                <br>
+                <img class="content-img2" src="assets/mermaid2.png" alt="mermaid2.png" />
+                <img class="content-img2" src="assets/mermaid3.png" alt="mermaid3.png" />
+                <h3>Abstractions & Polymorphism</h3>
+                <p>Though not commonly used in python, incorporating this approach significantly improves long-term
+                    design quality and maintainability.</p>
+                <pre><code class="language-python">from abc import ABC, abstractmethod
+
+from aiofiles import open as aio_open
+
+from pybotchi import Action
+
+class FileUpdateAction(Action, ABC):
+    """File Update Abstract Action."""
+    
+    @abstractmethod
+    async def read_file(self, path: str) -> str:
+        """Read file by path."""
+        pass
+
+class FileUpdate(FileUpdateAction):
+    """File Update Abstract Action."""
+    
+    async def read_file(self, path: str) -> str:
+        """Read file by path."""
+        with open(path, 'r') as f:
+            return f.read()
+
+
+class AsyncFileUpdate(FileUpdateAction):
+    """File Update Abstract Action."""
+    
+    async def read_file(self, path: str) -> str:
+        """Read file by path."""
+        async with aio_open(path, 'r') as f:
+            return await f.read()
+</code></pre>
+                <h3>Encapsulation</h3>
+                <div class="note">
+                    <strong>Note:</strong> Python doesn't enforce <strong>true</strong> encapsulation (like using
+                    keywords such as private in other languages), but you can use Pydantic's <code>PrivateAttr</code>
+                    feature. This allows you to hide internal attributes from the model's standard output and
+                    serialization.
+                </div>
+                <pre><code class="language-python">from pybotchi import Action
+
+from pydantic import Field, PrivateAttr
+
+class Agent(Action):
+    """Agent."""
+    value: str = Field(description="some value")
+    _private_value: str = PrivateAttr(default="some value")</code></pre>
+            </section>
+
+            <!-- Agents -->
+            <section id="life-cycle" class="content-section">
+                <h2>Life Cycle Hooks</h2>
+                <p>The purpose of Life Cycle Hooks is to give developers fine-grained control over the various stages of
+                    an agent's or workflow's execution. They act as specific, reliable points where you can inject
+                    custom business logic, handle data, manage errors, and control the flow, ensuring the agent behaves
+                    exactly as intended from preparation to completion.<br>This control allows for more complex, robust,
+                    and customized agent architectures.</p>
+                <h3>pre</h3>
+                <p>Executes before child agents run, allowing preparation, validation, and data gathering.</p>
+                <ul>
+                    <li>Guardrails and validation before execution</li>
+                    <li>Data gathering (RAG, knowledge graphs, etc.)</li>
+                    <li>Business logic, tool execution, or preprocessing</li>
+                    <li>Logging and notifications</li>
+                </ul>
+                <pre><code class="language-python">from itertools import islice
+
+from pybotchi import Action, ActionReturn
+
+from pydantic import Field
+
+class Translate(Action):
+    """Translate query to requested language."""
+
+    language: str = Field(description="Target language.")
+
+    async def pre(self, context: Context) -> ActionReturn:
+        """Execute pre process."""
+        # use base llm instance to invoke completion base on your requirements
+        message = await context.llm.ainvoke(
+            # Override system prompt to make your agent more specialized
+            [
+                {
+                    "content": f"You are a specialized agent for translating the user's query to {self.language}",
+                    "role": "system",
+                },
+                *islice(context.prompts, 1, None),
+            ]
+        )
+        # push message.text to your conversational prompt context
+        await context.add_response(self, message.text)
+        
+        # All process here are optional and overridable
+        # You may do something else here like calling other framework/library
+        # You may call langgraph ainvoke
+        # You may call crewai kickoff_async
+        # You may call OpenAI REST API directly
+        # You may do guardrails before executing any commands
+        # No restriction at all
+
+        return ActionReturn.GO
+        
+        # You can return ActionReturn.END if there's another agent or child to be executed and you already want to stop the workflow
+        # You can return ActionReturn.BREAK if it's part of iteration agent and you only need to break the loop and continue on next execution</code></pre>
+
+                <h3>post</h3>
+                <p>Executes after child agents complete, handling result consolidation and cleanup.</p>
+                <ul>
+                    <li>Consolidate results from child agent executions</li>
+                    <li>Data persistence (RAG, knowledge graphs, etc.)</li>
+                    <li>Cleanup and recording processes</li>
+                    <li>Logging and notifications</li>
+                </ul>
+                <pre><code class="language-python">from pybotchi import Action, ActionReturn
+
+from pydantic import Field
+
+class GeneratePresentation(Action):
+    """Generate presentation based on user's query."""
+
+    # your attributes here ...
+    # your pre execution method here ...
+    # your child actions here ...
+
+    async def post(self, context: Context) -> ActionReturn:
+        """Execute post process."""
+        # use base llm instance to invoke completion base on your requirements
+        message = await context.llm.ainvoke(
+            # Override system prompt to make your agent more specialized
+            [
+                {
+                    "content": f"You are a specialized agent for for generating closing remarks.",
+                    "role": "system",
+                },
+                *islice(context.prompts, 1, None),
+            ]
+        )
+        # push message.text to your conversational prompt context
+        await context.add_response(self, message.text)
+        
+        # All process here are optional and overridable
+        # You may do something else here like calling other framework/library
+        # You may call langgraph ainvoke
+        # You may call crewai kickoff_async
+        # You may call OpenAI REST API directly
+        # You may do guardrails after executing all 
+        # Save data to db
+        # Do cleanups
+        # No restriction at all
+
+        return ActionReturn.GO
+        
+        # You can return ActionReturn.END if there's another agent or child to be executed and you already want to stop the workflow
+        # You can return ActionReturn.BREAK if it's part of iteration agent and you only need to break the loop and continue on next execution</code></pre>
+
+                <h3>on_error</h3>
+                <p>Handles errors during execution with retry logic or custom error handling.</p>
+                <ul>
+                    <li>Error handling and retry mechanisms</li>
+                    <li>Logging and notifications</li>
+                    <li>Re-raise errors for parent agent handling</li>
+                </ul>
+                <pre><code>// Code placeholder</code></pre>
+
+                <h3>fallback</h3>
+                <p>Executes when no child agent is selected, handling non-tool-call results.</p>
+                <ul>
+                    <li>Process text content results from tool calls</li>
+                    <li>Allow non-tool-call result handling</li>
+                    <li>Logging and notifications</li>
+                </ul>
+                <pre><code>// Code placeholder</code></pre>
+
+                <h3>child_selection</h3>
+                <p>Determines which child agents to execute, can be overridden with custom logic.</p>
+                <ul>
+                    <li>Override with traditional control flow (if/else, switch/case)</li>
+                    <li>Custom agent selection logic</li>
+                    <li>Return declared or undeclared child agents</li>
+                </ul>
+                <pre><code>// Code placeholder</code></pre>
+
+                <h3>commit_context</h3>
+                <p>The final lifecycle event that controls context merging with the main execution context.</p>
+                <ul>
+                    <li>Detach and clone current context for isolated execution</li>
+                    <li>Control which data merges with main context</li>
+                    <li>Useful for reactive agents that only need final results</li>
+                </ul>
+                <pre><code>// Code placeholder</code></pre>
+
+                <h2>Extended Life Cycle Hooks</h2>
+                <h3>pre_mcp</h3>
+                <p>Executes before MCP server connection for <code>MCPAction</code> agents only.</p>
+                <ul>
+                    <li>Construct MCP server connection arguments</li>
+                    <li>Refresh expired credentials or tokens</li>
+                    <li>Guardrails and validation before connection</li>
+                </ul>
+                <pre><code>// Code placeholder</code></pre>
+
+                <h3>pre_grpc</h3>
+                <p>Executes before GRPC server connection for <code>GRPCAction</code> agents only.</p>
+                <ul>
+                    <li>Construct GRPC server connection arguments</li>
+                    <li>Refresh expired credentials or tokens</li>
+                    <li>Guardrails and validation before connection</li>
+                </ul>
+                <pre><code>// Code placeholder</code></pre>
+            </section>
+
+            <!-- Workflows -->
+            <section id="workflows" class="content-section">
+                <h2>Workflows</h2>
+                <p>Workflows orchestrate multiple agents to accomplish complex tasks through coordinated execution.</p>
+
+                <h3>Sequential Workflows</h3>
+                <pre><code>from agentflow import Workflow
+
+workflow = Workflow(mode="sequential")
+workflow.add_agent(planner)
+workflow.add_agent(executor)
+workflow.add_agent(reviewer)
+
+result = workflow.run("Complete this project")</code></pre>
+
+                <h3>Parallel Workflows</h3>
+                <pre><code>workflow = Workflow(mode="parallel")
+workflow.add_agent(researcher1)
+workflow.add_agent(researcher2)
+workflow.add_agent(researcher3)
+
+# All agents run simultaneously
+results = workflow.run("Research this topic")</code></pre>
+
+                <h3>Conditional Routing</h3>
+                <pre><code>def route_logic(context):
+    if context.complexity > 0.8:
+        return "expert_agent"
+    return "standard_agent"
+
+workflow = Workflow()
+workflow.add_router(route_logic)</code></pre>
+            </section>
+
+            <!-- Tools -->
+            <section id="tools" class="content-section">
+                <h2>Tools & Plugins</h2>
+                <p>Extend agent capabilities with tools and plugins for external integrations.</p>
+
+                <h3>Built-in Tools</h3>
+                <ul>
+                    <li><strong>web_search</strong>: Search the web for information</li>
+                    <li><strong>calculator</strong>: Perform mathematical calculations</li>
+                    <li><strong>file_reader</strong>: Read and process files</li>
+                    <li><strong>api_caller</strong>: Make HTTP requests</li>
+                </ul>
+
+                <h3>Creating Custom Tools</h3>
+                <pre><code>from agentflow import Tool
+
+@Tool.register("weather")
+def get_weather(location: str) -> str:
+    """Get current weather for a location."""
+    # Your implementation here
+    return f"Weather in {location}: Sunny, 72°F"
+
+# Use in an agent
+agent = Agent(
+    name="weather_agent",
+    tools=["weather"]
+)</code></pre>
+
+                <h3>Plugin System</h3>
+                <pre><code>from agentflow import Plugin
+
+class DatabasePlugin(Plugin):
+    def setup(self):
+        self.conn = connect_to_db()
+    
+    def query(self, sql):
+        return self.conn.execute(sql)
+
+# Register plugin
+agent.add_plugin(DatabasePlugin())</code></pre>
+            </section>
+
+            <!-- Memory -->
+            <section id="memory" class="content-section">
+                <h2>Memory Systems</h2>
+                <p>AgentFlow provides flexible memory systems for maintaining context and learning from interactions.
+                </p>
+
+                <h3>Short-term Memory</h3>
+                <pre><code>from agentflow import ShortTermMemory
+
+memory = ShortTermMemory(max_size=10)
+agent = Agent(name="assistant", memory=memory)
+
+# Memory is automatically managed
+agent.run("Remember: User prefers Python")
+agent.run("What language does the user prefer?")</code></pre>
+
+                <h3>Long-term Memory</h3>
+                <pre><code>from agentflow import LongTermMemory
+
+memory = LongTermMemory(
+    backend="redis",
+    embedding_model="text-embedding-ada-002"
+)
+
+# Store and retrieve relevant information
+memory.store("User expertise: Machine Learning")
+relevant = memory.search("What does the user know?")</code></pre>
+
+                <h3>Vector Memory</h3>
+                <pre><code>from agentflow import VectorMemory
+
+memory = VectorMemory(
+    dimension=1536,
+    index_type="hnsw"
+)
+
+# Semantic search across memories
+results = memory.similarity_search(
+    query="AI research",
+    top_k=5
+)</code></pre>
+            </section>
+
+            <!-- Orchestration -->
+            <section id="orchestration" class="content-section">
+                <h2>Orchestration Patterns</h2>
+                <p>Learn advanced patterns for coordinating complex multi-agent systems.</p>
+
+                <h3>Hierarchical Orchestration</h3>
+                <p>Use a manager agent to coordinate worker agents:</p>
+                <pre><code>manager = Agent(
+    name="manager",
+    system_prompt="Coordinate workers to complete tasks"
+)
+
+workers = [
+    Agent(name="worker_1", specialty="data"),
+    Agent(name="worker_2", specialty="analysis"),
+    Agent(name="worker_3", specialty="reporting")
+]
+
+orchestrator = HierarchicalOrchestrator(
+    manager=manager,
+    workers=workers
+)</code></pre>
+
+                <h3>Event-Driven Architecture</h3>
+                <pre><code>from agentflow import EventBus
+
+bus = EventBus()
+
+@bus.on("data_received")
+async def process_data(event):
+    await processor_agent.run(event.data)
+
+@bus.on("processing_complete")
+async def generate_report(event):
+    await reporter_agent.run(event.results)</code></pre>
+            </section>
+
+            <!-- Scaling -->
+            <section id="scaling" class="content-section">
+                <h2>Scaling & Performance</h2>
+                <p>Optimize your agent systems for production workloads.</p>
+
+                <h3>Async Execution</h3>
+                <pre><code>import asyncio
+from agentflow import Agent
+
+agents = [Agent(name=f"agent_{i}") for i in range(10)]
+
+async def run_parallel():
+    tasks = [agent.arun(task) for agent in agents]
+    results = await asyncio.gather(*tasks)
+    return results
+
+results = asyncio.run(run_parallel())</code></pre>
+
+                <h3>Caching</h3>
+                <pre><code>from agentflow import Cache
+
+cache = Cache(backend="redis", ttl=3600)
+agent = Agent(name="cached_agent", cache=cache)
+
+# Responses are automatically cached
+response1 = agent.run("What is 2+2?")  # Cache miss
+response2 = agent.run("What is 2+2?")  # Cache hit</code></pre>
+
+                <h3>Load Balancing</h3>
+                <pre><code>
+from agentflow import LoadBalancer
+
+balancer = LoadBalancer(
+    agents=[agent1, agent2, agent3],
+    strategy="round_robin"
+)
+
+# Requests are distributed across agents
+response = balancer.run("Process this task")</code></pre>
+
+                <h3>Resource Management</h3>
+                <pre><code>from agentflow import ResourceManager
+
+manager = ResourceManager(
+    max_concurrent_agents=10,
+    memory_limit="4GB",
+    timeout=60
+)
+
+workflow = Workflow(resource_manager=manager)</code></pre>
+            </section>
+
+            <!-- Monitoring -->
+            <section id="monitoring" class="content-section">
+                <h2>Monitoring</h2>
+                <p>Track and debug your agent systems with built-in monitoring tools.</p>
+
+                <h3>Logging</h3>
+                <pre><code>from agentflow import configure_logging
+
+configure_logging(
+    level="DEBUG",
+    format="json",
+    output="agentflow.log"
+)
+
+# Logs are automatically captured
+agent.run("Task with logging")</code></pre>
+
+                <h3>Metrics</h3>
+                <pre><code>from agentflow import MetricsCollector
+
+metrics = MetricsCollector()
+agent = Agent(name="monitored", metrics=metrics)
+
+# View metrics
+print(metrics.get_stats())
+# {
+#   "total_requests": 100,
+#   "avg_latency": 1.2,
+#   "error_rate": 0.02
+# }</code></pre>
+
+                <h3>Tracing</h3>
+                <pre><code>from agentflow import Tracer
+
+tracer = Tracer(backend="jaeger")
+workflow = Workflow(tracer=tracer)
+
+# Traces are automatically collected
+result = workflow.run("Complex task")
+tracer.export_traces("traces.json")</code></pre>
+            </section>
+
+            <!-- API Reference -->
+            <section id="api" class="content-section">
+                <h2>API Reference</h2>
+                <p>Complete API documentation for all AgentFlow components.</p>
+
+                <h3>Core Classes</h3>
+                <ul>
+                    <li><strong>Agent</strong>: Base class for creating AI agents</li>
+                    <li><strong>Workflow</strong>: Orchestrate multiple agents</li>
+                    <li><strong>Tool</strong>: Extend agent capabilities</li>
+                    <li><strong>Memory</strong>: Manage agent memory systems</li>
+                </ul>
+
+                <h3>Agent API</h3>
+                <pre><code>class Agent:
+    def __init__(
+        self,
+        name: str,
+        model: str = "gpt-4",
+        system_prompt: str = "",
+        temperature: float = 0.7,
+        max_tokens: int = 2000,
+        tools: List[str] = None,
+        memory: Memory = None
+    ):
+        """Initialize an agent."""
+        pass
+    
+    def run(self, task: str) -> str:
+        """Execute a task synchronously."""
+        pass
+    
+    async def arun(self, task: str) -> str:
+        """Execute a task asynchronously."""
+        pass
+    
+    def stream(self, task: str) -> Iterator[str]:
+        """Stream response chunks."""
+        pass</code></pre>
+                <div class="note">
+                    <strong>Note:</strong> Full API documentation is available at <code>docs.agentflow.dev</code>
+                </div>
+            </section>
+
+            <!-- Examples -->
+            <section id="examples" class="content-section">
+                <h2>Examples</h2>
+                <p>Real-world examples to help you get started quickly.</p>
+
+                <h3>Customer Support Bot</h3>
+                <pre><code>from agentflow import Agent, Tool
+
+@Tool.register("knowledge_base")
+def search_kb(query: str) -> str:
+    # Search your knowledge base
+    return "FAQ answer here"
+
+support_agent = Agent(
+    name="support",
+    system_prompt="You are a helpful customer support agent.",
+    tools=["knowledge_base"]
+)
+
+response = support_agent.run(
+    "How do I reset my password?"
+)</code></pre>
+
+                <h3>Research Assistant</h3>
+                <pre><code>researcher = Agent(
+    name="researcher",
+    tools=["web_search", "summarizer"]
+)
+
+analyst = Agent(
+    name="analyst",
+    system_prompt="Analyze research findings"
+)
+
+workflow = Workflow()
+workflow.add_agent(researcher)
+workflow.add_agent(analyst)
+workflow.connect(researcher, analyst)
+
+report = workflow.run(
+    "Research the latest trends in AI"
+)</code></pre>
+
+                <h3>Code Review System</h3>
+                <pre><code>reviewer = Agent(
+    name="reviewer",
+    system_prompt="Review code for best practices"
+)
+
+security = Agent(
+    name="security",
+    system_prompt="Check for security vulnerabilities"
+)
+
+workflow = Workflow(mode="parallel")
+workflow.add_agent(reviewer)
+workflow.add_agent(security)
+
+results = workflow.run(code_snippet)</code></pre>
+            </section>
+
+            <!-- Contributing -->
+            <section id="contributing" class="content-section">
+                <h2>Contributing</h2>
+                <p>We welcome contributions from the community! Here's how you can help.</p>
+
+                <h3>Getting Started</h3>
+                <ol>
+                    <li>Fork the repository on GitHub</li>
+                    <li>Clone your fork locally</li>
+                    <li>Create a new branch for your feature</li>
+                    <li>Make your changes and write tests</li>
+                    <li>Submit a pull request</li>
+                </ol>
+
+                <h3>Development Setup</h3>
+                <pre><code>git clone https://github.com/yourusername/agentflow.git
+cd agentflow
+pip install -e ".[dev]"
+pre-commit install</code></pre>
+
+                <h3>Running Tests</h3>
+                <pre><code>pytest tests/
+pytest --cov=agentflow tests/</code></pre>
+
+                <h3>Code Style</h3>
+                <p>We use <code>black</code> for formatting and <code>ruff</code> for linting:</p>
+                <pre><code>black .
+ruff check .</code></pre>
+
+                <div class="note">
+                    <strong>Note:</strong> Please read our <code>CONTRIBUTING.md</code> for detailed guidelines.
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // Navigation handling
+        const navLinks = document.querySelectorAll('.nav-link');
+        const sections = document.querySelectorAll('.content-section');
+
+        function showSection(targetId) {
+            sections.forEach(section => {
+                section.classList.remove('active');
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+            });
+
+            const targetSection = document.getElementById(targetId);
+            if (targetSection) {
+                targetSection.classList.add('active');
+            }
+
+            const activeLink = document.querySelector(`a[href="#${targetId}"]`);
+            if (activeLink) {
+                activeLink.classList.add('active');
+            }
+
+            // Scroll to top of main content
+            document.querySelector('.main-content').scrollTo(0, 0);
+        }
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = link.getAttribute('href').substring(1);
+                showSection(targetId);
+
+                // Update URL without page reload
+                history.pushState(null, '', `#${targetId}`);
+            });
+        });
+
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', () => {
+            const hash = location.hash.substring(1) || 'home';
+            showSection(hash);
+        });
+
+        // Handle initial load with hash
+        window.addEventListener('load', () => {
+            const hash = location.hash.substring(1) || 'home';
+            showSection(hash);
+        });
+    </script>
 </body>
+
 </html>

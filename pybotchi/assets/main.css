@@ -522,3 +522,481 @@ ul li::marker {
     height: auto;
     margin: 0 1.5%;
 }
+
+
+#how-it-works h2 {
+    font-size: 2rem;
+    margin-bottom: 3rem;
+    color: var(--text);
+    text-align: center;
+    position: relative;
+    padding-bottom: 0.75rem;
+}
+
+#how-it-works h2::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    border-radius: 2px;
+}
+
+.section-header {
+    text-align: center;
+    margin-bottom: 4rem;
+    animation: fadeInUp 0.8s ease-out;
+}
+
+.section-header h1 {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.section-header .tagline {
+    font-size: 1.25rem;
+    color: var(--text-muted);
+}
+
+.philosophy-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 3rem;
+    margin-bottom: 3rem;
+    position: relative;
+    overflow: hidden;
+    animation: fadeIn 1s ease-out;
+}
+
+.philosophy-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+}
+
+.philosophy-content {
+    display: grid;
+    gap: 2rem;
+}
+
+.insight-block {
+    background: rgba(14, 165, 233, 0.05);
+    border-left: 4px solid var(--primary);
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.insight-block:hover {
+    background: rgba(14, 165, 233, 0.1);
+    transform: translateX(8px);
+}
+
+.insight-block h3 {
+    font-size: 1.25rem;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+}
+
+.insight-block p {
+    color: var(--text-muted);
+    line-height: 1.8;
+}
+
+.diagram-section {
+    margin: 4rem 0;
+}
+
+.workflow-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 3rem;
+    position: relative;
+}
+
+.workflow-steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    position: relative;
+}
+
+.workflow-step {
+    background: var(--bg-dark);
+    border: 2px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.4s ease;
+    position: relative;
+    animation: slideInUp 0.6s ease-out;
+    animation-fill-mode: both;
+}
+
+.workflow-step:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.workflow-step:nth-child(2) {
+    animation-delay: 0.3s;
+}
+
+.workflow-step:nth-child(3) {
+    animation-delay: 0.5s;
+}
+
+.workflow-step:hover {
+    border-color: var(--primary);
+    transform: translateY(-8px);
+    box-shadow: 0 10px 30px rgba(14, 165, 233, 0.3);
+}
+
+.step-number {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0 auto 1.5rem;
+    box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+}
+
+.workflow-step h3 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    color: var(--text);
+}
+
+.workflow-step p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+}
+
+.workflow-step .tech-label {
+    display: inline-block;
+    background: rgba(14, 165, 233, 0.2);
+    color: var(--accent);
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.85rem;
+    margin-top: 1rem;
+    font-weight: 600;
+}
+
+.arrow-connector {
+    position: absolute;
+    top: 50%;
+    right: -1.9rem;
+    transform: translateY(-50%);
+    font-size: 2rem;
+    color: var(--primary);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 0.6;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+.workflow-step:last-child .arrow-connector {
+    display: none;
+}
+
+/* Architecture Section Styles */
+.architecture-section {
+    margin: 4rem 0;
+}
+
+.architecture-diagram {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 2rem;
+    margin-bottom: 3rem;
+    text-align: center;
+}
+
+.arch-diagram-img {
+    width: 100%;
+    max-width: 900px;
+    height: auto;
+    border-radius: 0.5rem;
+    border: 2px solid var(--border);
+}
+
+.diagram-caption {
+    margin-top: 1rem;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    font-style: italic;
+}
+
+.lifecycle-explanation {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 3rem;
+    margin-bottom: 2rem;
+}
+
+.lifecycle-explanation h3 {
+    font-size: 1.75rem;
+    color: var(--text);
+    margin-bottom: 1.5rem;
+}
+
+.intro-text {
+    color: var(--text-muted);
+    font-size: 1.05rem;
+    line-height: 1.8;
+    margin-bottom: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.lifecycle-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+
+.lifecycle-step {
+    background: rgba(14, 165, 233, 0.05);
+    border-left: 4px solid var(--primary);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.lifecycle-step:hover {
+    background: rgba(14, 165, 233, 0.1);
+    transform: translateX(8px);
+}
+
+.step-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.step-num {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.lifecycle-step h4 {
+    font-size: 1.25rem;
+    color: var(--text);
+    margin: 0;
+}
+
+.lifecycle-step p {
+    color: var(--text-muted);
+    line-height: 1.8;
+    margin: 0;
+}
+
+.additional-hooks {
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+}
+
+.additional-hooks h4 {
+    font-size: 1.25rem;
+    color: var(--text);
+    margin-bottom: 1.5rem;
+}
+
+.hooks-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+}
+
+.hook-card {
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 1.25rem;
+    transition: all 0.3s ease;
+}
+
+.hook-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-4px);
+    box-shadow: 0 4px 15px rgba(14, 165, 233, 0.2);
+}
+
+.hook-card strong {
+    display: block;
+    color: var(--accent);
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.hook-card p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.key-insight {
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(6, 182, 212, 0.1));
+    border: 2px solid var(--primary);
+    border-radius: 1rem;
+    padding: 2rem;
+    margin-bottom: 3rem;
+}
+
+.key-insight h4 {
+    font-size: 1.5rem;
+    color: var(--accent);
+    margin-bottom: 1rem;
+}
+
+.key-insight p {
+    color: var(--text);
+    font-size: 1.05rem;
+    line-height: 1.8;
+    margin: 0;
+}
+
+.architecture-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+    margin-top: 3rem;
+}
+
+.arch-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 2rem;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.arch-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.arch-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 8px 25px rgba(14, 165, 233, 0.2);
+    transform: translateY(-4px);
+}
+
+.arch-card:hover::before {
+    transform: scaleX(1);
+}
+
+.arch-card h3 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    color: var(--text);
+}
+
+.arch-card p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin: 0;
+}
+
+.highlight-box {
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(6, 182, 212, 0.1));
+    border: 2px solid var(--primary);
+    border-radius: 1rem;
+    padding: 2rem;
+    margin: 3rem 0;
+    text-align: center;
+}
+
+.highlight-box h3 {
+    font-size: 1.75rem;
+    color: var(--accent);
+    margin-bottom: 1rem;
+}
+
+.highlight-box p {
+    font-size: 1.1rem;
+    color: var(--text);
+    line-height: 1.8;
+}
+
+@media (max-width: 768px) {
+    .workflow-steps {
+        grid-template-columns: 1fr;
+    }
+
+    .arrow-connector {
+        display: none;
+    }
+
+    .hooks-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .lifecycle-explanation {
+        padding: 2rem 1.5rem;
+    }
+
+    .section-header h1 {
+        font-size: 2rem;
+    }
+
+    .architecture-section h2 {
+        font-size: 1.75rem;
+    }
+
+    .architecture-grid {
+        grid-template-columns: 1fr;
+    }
+}

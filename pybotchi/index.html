@@ -24,6 +24,7 @@
                 <a href="#home" class="nav-link active">Home</a>
                 <a href="#installation" class="nav-link">Installation</a>
                 <a href="#quickstart" class="nav-link">Quick Start</a>
+                <a href="#how-it-works" class="nav-link active">How it works</a>
             </div>
             <div class="nav-section">
                 <h3>Core Features</h3>
@@ -83,6 +84,14 @@
                             and adherence to
                             industry-standard type hinting. This foundation makes every component inherently overridable
                             and extendable to precisely match complex requirements.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔧</div>
+                        <h3>JSON Schema Native</h3>
+                        <p>Built on Pydantic <code>BaseModel</code>, every Action automatically conforms to JSON Schema
+                            standards used by OpenAI, Gemini, and other LLM providers for tool calling. Anthropic
+                            requires minor adjustments, but with PyBotchi's overridable architecture, you can easily
+                            adapt to any provider's specification without compromising the core design.</p>
                     </div>
                     <div class="feature-card">
                         <div class="feature-icon">🎣</div>
@@ -188,9 +197,11 @@ LLM.add(
 )</code></pre>
                 <h3>Declare your master agent</h3>
                 <p>Get up and running with PyBotchi in minutes. Here's a simple example to create your first agent:</p>
-                <pre><code class="language-python">from pybotchi import Action, ActionReturn
+                <pre><code class="language-python">from pybotchi import Action, ActionReturn, Context
 
 from pydantic import Field
+
+# previous imports and code ...
 
 class GeneralChat(Action):
     """Casual Generic Chat."""
@@ -244,6 +255,8 @@ Ensure that all relevant tools are effectively utilized and properly sequenced t
                 <pre><code class="language-python">from asyncio import run
 
 from pybotchi import graph
+
+# previous imports and code ...
 
 async def main():
     action, _ = await context.start(GeneralChat)
@@ -353,6 +366,200 @@ __main__.GeneralChat --> __main__.GeneralChat.Translate
 __main__.GeneralChat --> __main__.GeneralChat.AnswerMathProlem</code></pre>
                 <h3>Mermaid-JS Flowchart</h3>
                 <img class="content-img" src="assets/mermaid.png" alt="mermaid.png" />
+            </section>
+            <section id="how-it-works" class="content-section">
+                <div class="section-header">
+                    <h1>How It Works</h1>
+                    <p class="tagline">Understanding the philosophy and architecture behind PyBotchi</p>
+                </div>
+
+                <div class="philosophy-section">
+                    <h2>Why PyBotchi Exists</h2>
+                    <div class="philosophy-content">
+                        <div class="insight-block">
+                            <h3>Traditional Coding Already Works</h3>
+                            <p>We've been building complex systems across every industry using traditional development
+                                approaches since the beginning of computing. Every application challenge has been solved
+                                deterministically through well-structured code, APIs, and events.</p>
+                        </div>
+
+                        <div class="insight-block">
+                            <h3>The Critical Gap: Natural Language Translation</h3>
+                            <p>The real limitation isn't in execution—it's in translation. Traditional systems require
+                                users to know specific structures, APIs, and interfaces. Every action needs dedicated
+                                endpoints. What if we could accept natural language and automatically route to the right
+                                logic?</p>
+                        </div>
+
+                        <div class="insight-block">
+                            <h3>LLMs as Translators, Not Replacements</h3>
+                            <p>Many frameworks try to replace traditional development with LLM-driven logic. PyBotchi
+                                takes a different approach: LLMs excel at understanding intent and translating between
+                                human and computer language—not at business logic, calculations, or deterministic
+                                execution. Let each do what it does best.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="diagram-section">
+                    <h2>The PyBotchi Workflow</h2>
+                    <div class="workflow-container">
+                        <div class="workflow-steps">
+                            <div class="workflow-step">
+                                <div class="step-number">1</div>
+                                <h3>Detect & Translate</h3>
+                                <p>LLM processes natural language input to extract intents and identify the appropriate
+                                    Action with its arguments.</p>
+                                <span class="tech-label">LLM Layer</span>
+                                <div class="arrow-connector">→</div>
+                            </div>
+
+                            <div class="workflow-step">
+                                <div class="step-number">2</div>
+                                <h3>Execute Logic</h3>
+                                <p>Traditional code handles business logic, calculations, and data processing—the
+                                    deterministic work computers do best.</p>
+                                <span class="tech-label">Your Code</span>
+                                <div class="arrow-connector">→</div>
+                            </div>
+
+                            <div class="workflow-step">
+                                <div class="step-number">3</div>
+                                <h3>Generate Response</h3>
+                                <p>LLM transforms processed results back into natural language for human-friendly
+                                    communication.</p>
+                                <span class="tech-label">LLM Layer</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="architecture-section">
+                    <h2>The Action Lifecycle Architecture</h2>
+
+                    <div class="architecture-diagram">
+                        <img src="assets/action-life-cycle.png" alt="PyBotchi Architecture Diagram"
+                            class="arch-diagram-img">
+                        <p class="diagram-caption">Hierarchical action execution with parent-child relationships</p>
+                    </div>
+
+                    <div class="lifecycle-explanation">
+                        <h3>How the Lifecycle Works</h3>
+                        <p class="intro-text">Every Action in PyBotchi follows a structured lifecycle that gives you
+                            complete control over execution flow. This lifecycle enables precise orchestration of
+                            multi-agent systems while maintaining clean, maintainable code.</p>
+
+                        <div class="lifecycle-steps">
+                            <div class="lifecycle-step">
+                                <div class="step-header">
+                                    <div class="step-num">1</div>
+                                    <h4>Pre-Execution</h4>
+                                </div>
+                                <p>The Action's <code>pre</code> hook runs before any child agent selection. This is
+                                    where you implement business logic, validation, data gathering (RAG, knowledge
+                                    graphs), tool execution, or any custom processing. You have complete freedom—use
+                                    traditional code, call external APIs, or integrate other frameworks.</p>
+                            </div>
+
+                            <div class="lifecycle-step">
+                                <div class="step-header">
+                                    <div class="step-num">2</div>
+                                    <h4>Child Selection</h4>
+                                </div>
+                                <p>After pre-execution, the system determines which child Actions to execute next. You
+                                    can let the LLM decide via tool calling, or override this entirely with traditional
+                                    logic (if/else, switch cases). The choice is yours—use AI routing when it makes
+                                    sense, use deterministic code when it doesn't.</p>
+                            </div>
+
+                            <div class="lifecycle-step">
+                                <div class="step-header">
+                                    <div class="step-num">3</div>
+                                    <h4>Child Execution</h4>
+                                </div>
+                                <p>Selected child Actions run through their own complete lifecycle. They maintain
+                                    references to their parent (the Action that called them) and can access sibling
+                                    Actions executed alongside them. This creates a hierarchical execution tree that's
+                                    automatically tracked and traceable.</p>
+                            </div>
+
+                            <div class="lifecycle-step">
+                                <div class="step-header">
+                                    <div class="step-num">4</div>
+                                    <h4>Post-Processing</h4>
+                                </div>
+                                <p>The <code>post</code> hook runs after all child executions complete. Use it to
+                                    consolidate results, save data, perform cleanup, logging, or prepare the final
+                                    response. Like pre-execution, you have complete freedom to implement any logic
+                                    needed.</p>
+                            </div>
+                        </div>
+
+                        <div class="additional-hooks">
+                            <h4>Additional Lifecycle Hooks</h4>
+                            <div class="hooks-grid">
+                                <div class="hook-card">
+                                    <strong>on_error</strong>
+                                    <p>Handle errors, implement retry logic, log issues, or re-raise for parent
+                                        handling.</p>
+                                </div>
+                                <div class="hook-card">
+                                    <strong>fallback</strong>
+                                    <p>Triggered when no child is selected—handle non-tool responses or default
+                                        behaviors.</p>
+                                </div>
+                                <div class="hook-card">
+                                    <strong>commit_context</strong>
+                                    <p>Control what data merges back to the main context—useful for reactive agents.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="key-insight">
+                        <h4>Why This Matters</h4>
+                        <p>This lifecycle gives you the best of both worlds: structured orchestration with complete
+                            flexibility. Use LLMs for intent detection and routing, but keep your business logic where
+                            it belongs—in well-tested, deterministic code. Override any hook, inject custom logic at any
+                            stage, and maintain full control over your system's behavior.</p>
+                    </div>
+                    <div class="architecture-grid">
+                        <div class="arch-card">
+                            <h3>🏗️ Self-Documenting Graph</h3>
+                            <p>Your code IS the architecture. Declare child Actions as class attributes and the
+                                execution graph emerges naturally. No separate diagramming tools, no manual
+                                synchronization—the graph structure is inherent in your code and always accurate.</p>
+                        </div>
+
+                        <div class="arch-card">
+                            <h3>🔄 Living Architecture</h3>
+                            <p>Add, remove, or swap agents at runtime without system restarts. Access parent context and
+                                sibling state during execution. Your agent system adapts to changing requirements
+                                without architectural rewrites.</p>
+                        </div>
+
+                        <div class="arch-card">
+                            <h3>⚡ True Customization</h3>
+                            <p>Override ANY hook with your own logic. Replace LLM routing with traditional if/else when
+                                needed. Integrate any framework, call any API, implement any business rule—PyBotchi
+                                enforces structure, not limitations.</p>
+                        </div>
+
+                        <div class="arch-card">
+                            <h3>🎯 Team Scalability</h3>
+                            <p>Different teams can build isolated agents independently. No merge conflicts in graph
+                                definitions, no stepping on each other's code. Deploy agents separately, test in
+                                isolation, integrate seamlessly.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="highlight-box">
+                    <h3>The Core Philosophy</h3>
+                    <p>PyBotchi doesn't replace your code—it enhances it. By letting LLMs handle what they're good at
+                        (understanding intent) and letting your code handle what it's good at (executing logic), you get
+                        the best of both worlds: the flexibility of natural language with the reliability of
+                        deterministic execution.</p>
+                </div>
             </section>
             <section id="object-oriented" class="content-section">
                 <h2>OOP-Driven Agent Customization</h2>
@@ -493,7 +700,7 @@ class Agent(Action):
                 </ul>
                 <pre><code class="language-python">from itertools import islice
 
-from pybotchi import Action, ActionReturn
+from pybotchi import Action, ActionReturn, Context
 
 from pydantic import Field
 
@@ -539,16 +746,14 @@ class Translate(Action):
                     <li>Cleanup and recording processes</li>
                     <li>Logging and notifications</li>
                 </ul>
-                <pre><code class="language-python">from pybotchi import Action, ActionReturn
-
-from pydantic import Field
+                <pre><code class="language-python">from pybotchi import Action, ActionReturn, Context
 
 class GeneratePresentation(Action):
     """Generate presentation based on user's query."""
 
-    # your attributes here ...
-    # your pre execution method here ...
-    # your child actions here ...
+    # your attributes ...
+    # your pre execution method ...
+    # your child actions ...
 
     async def post(self, context: Context) -> ActionReturn:
         """Execute post process."""
@@ -580,7 +785,6 @@ class GeneratePresentation(Action):
         
         # You can return ActionReturn.END if there's another agent or child to be executed and you already want to stop the workflow
         # You can return ActionReturn.BREAK if it's part of iteration agent and you only need to break the loop and continue on next execution</code></pre>
-
                 <h3>on_error</h3>
                 <p>Handles errors during execution with retry logic or custom error handling.</p>
                 <ul>
@@ -588,8 +792,35 @@ class GeneratePresentation(Action):
                     <li>Logging and notifications</li>
                     <li>Re-raise errors for parent agent handling</li>
                 </ul>
-                <pre><code>// Code placeholder</code></pre>
+                <pre><code class="language-python">from pybotchi import Action, ActionReturn, Context
 
+class GeneratePresentation(Action):
+    """Generate presentation based on user's query."""
+
+    # your attributes ...
+    # your pre execution method ...
+    # your post execution method ...
+    # your child actions ...
+
+    async def on_error(self, context: Context, exception: Exception) -> ActionReturn:
+        """Execute on error process."""
+        # Consume exception Here
+        # Check for type or attributes then execute their respective full back process
+        
+        # Example:
+        match exception:
+            case ConnectionError():
+                print("Network connection failed")
+                fallback1()
+            case TimeoutError():
+                print("Request timed out")
+                fallback2()
+            case _:
+                print(f"Unexpected error: {type(e).__name__}: {e}")
+                fallback3()
+        
+        # Optional re-raise
+        raise e</code></pre>
                 <h3>fallback</h3>
                 <p>Executes when no child agent is selected, handling non-tool-call results.</p>
                 <ul>
@@ -597,8 +828,28 @@ class GeneratePresentation(Action):
                     <li>Allow non-tool-call result handling</li>
                     <li>Logging and notifications</li>
                 </ul>
-                <pre><code>// Code placeholder</code></pre>
+                <pre><code class="language-python">from pybotchi import Action, ActionReturn, ChatRole, Context
 
+class GeneratePresentation(Action):
+    """Generate presentation based on user's query."""
+
+    # your attributes ...
+    # your pre execution method ...
+    # your post execution method ...
+    # your child actions ...
+
+    async def fallback(self, context: Context, content: str) -> ActionReturn:
+        """Execute fallback process."""
+        # You can just add the content as response
+        await context.add_response(self, content)
+
+        # or
+        # await context.add_message(ChatRole.ASSISTANT, content)
+
+        return ActionReturn.GO
+    
+        # or
+        # return ActionReturn.END</code></pre>
                 <h3>child_selection</h3>
                 <p>Determines which child agents to execute, can be overridden with custom logic.</p>
                 <ul>
@@ -606,8 +857,46 @@ class GeneratePresentation(Action):
                     <li>Custom agent selection logic</li>
                     <li>Return declared or undeclared child agents</li>
                 </ul>
-                <pre><code>// Code placeholder</code></pre>
+                <pre><code class="language-python">from pybotchi import Action, ActionReturn, ChatRole, Context
 
+class GeneratePresentation(Action):
+    """Generate presentation based on user's query."""
+
+    # your attributes ...
+    # your pre execution method ...
+    # your post execution method ...
+    # your child actions ...
+
+    async def child_selection(
+        self,
+        context: Context,
+        child_actions: ChildActions | None = None,
+    ) -> tuple[list["Action"], str]:
+        """Execute tool selection process."""
+        # By default, child_actions will hold the current set of child actions.
+        # It's only possibly None if the method was called by an overridden process that doesn't maintain the child_actions reference.
+        # If it is None, the lines below will automatically retrieve the actions.
+        if child_actions is None:
+            child_actions = await self.get_child_actions(context)
+
+        # Override the selection here.
+        # Use if/else, match/case, or an LLM tool call.
+        # context.prompts holds the conversational data.
+        # context.metadata holds additional context.
+        # context.llm is the default BaseChatModel for your tool call invocation.
+
+        message = await context.llm.ainvoke(...)
+
+        # Select the next actions based on your result.
+        next_actions = [
+            child_actions[call["name"]](**call["args"]) for call in message.tool_calls
+        ]
+
+        # message.text is for a fallback process in case tool_calls is empty.
+        return next_actions, message.text
+
+        # Alternatively:
+        # return [SomeAction()], "Your fallback message"</code></pre>
                 <h3>commit_context</h3>
                 <p>The final lifecycle event that controls context merging with the main execution context.</p>
                 <ul>
@@ -615,8 +904,26 @@ class GeneratePresentation(Action):
                     <li>Control which data merges with main context</li>
                     <li>Useful for reactive agents that only need final results</li>
                 </ul>
-                <pre><code>// Code placeholder</code></pre>
+                <pre><code class="language-python">from pybotchi import Action, ActionReturn, ChatRole, Context
 
+class GeneratePresentation(Action):
+    """Generate presentation based on user's query."""
+
+    # optional attribute to enable iteration
+    __max_child_iteration__ = 5
+
+    # your attributes ...
+    # your pre execution method ...
+    # your post execution method ...
+    # your child actions ...
+
+    async def commit_context(self, parent: Context, child: Context) -> None:
+        """Execute commit context if it's detached."""
+        # The default implementation will merge usages.
+        await super().commit_context(parent, child)
+
+        # Include additional data merging or logging here.
+        # Transfer context.prompts, metadata, or any other important information.</code></pre>
                 <h2>Extended Life Cycle Hooks</h2>
                 <h3>pre_mcp</h3>
                 <p>Executes before MCP server connection for <code>MCPAction</code> agents only.</p>
@@ -625,7 +932,41 @@ class GeneratePresentation(Action):
                     <li>Refresh expired credentials or tokens</li>
                     <li>Guardrails and validation before connection</li>
                 </ul>
-                <pre><code>// Code placeholder</code></pre>
+                <pre><code class="language-python">from pybotchi import ActionReturn
+from pybotchi.mcp import MCPAction, MCPConnection, MCPContext
+
+
+class JiraRequestAction(MCPAction):
+    """Trigger Atlassian Jira related request."""
+
+    __mcp_connections__ = [
+        MCPConnection("jira", "SSE", "https://mcp.atlassian.com/v1/sse")
+    ]
+
+    # your attributes ...
+    # your pre execution method ...
+    # your post execution method ...
+    # your child actions ...
+
+    async def pre_mcp(self, context: MCPContext) -> ActionReturn:
+        """Execute pre process."""
+        if not (integration := context.integrations.get("jira")):
+            raise NotImplementedError("Feature not yet implemented!")
+
+        # Implement guardrails or additional validation for custom security checks.
+
+        # Implement business logic to generate a user token or refresh an existing one
+        # Use Context overrides here to integrate your specific data requirements
+
+        # Optionally adjust headers for MCP arguments for the duration of this context.
+        integration["config"]["headers"] = {"Authorization": "Bearer {{access_token}}"}
+        # Optionally override allowed_tools for the duration of this context.
+        integration["allowed_tools"] = {
+            "Action1",
+            "Action2",
+        }
+
+        return ActionReturn.GO</code></pre>
 
                 <h3>pre_grpc</h3>
                 <p>Executes before GRPC server connection for <code>GRPCAction</code> agents only.</p>
@@ -634,14 +975,47 @@ class GeneratePresentation(Action):
                     <li>Refresh expired credentials or tokens</li>
                     <li>Guardrails and validation before connection</li>
                 </ul>
-                <pre><code>// Code placeholder</code></pre>
+                <pre><code class="language-python">from pybotchi import ActionReturn
+from pybotchi.grpc import GRPCAction, GRPCConnection, GRPCContext
+
+
+class GeneralChat(GRPCAction):
+    """Casual Generic Chat."""
+
+    __grpc_connections__ = [GRPCConnection("testing", "localhost:50051", "group-1")]
+
+    # your attributes ...
+    # your pre execution method ...
+    # your post execution method ...
+    # your child actions ...
+
+    async def pre_grpc(self, context: GRPCContext) -> ActionReturn:
+        """Execute pre grpc execution."""
+        if not (integration := context.integrations.get("testing")):
+            raise NotImplementedError("Feature not yet implemented!")
+
+        # Implement guardrails or additional validation for custom security checks.
+
+        # Implement business logic to generate a user token or refresh an existing one
+        # Use Context overrides here to integrate your specific data requirements
+
+        # Optionally Adjust GRPC connection arguments and additional configuration for the duration of this context.
+        integration["config"]["metadata"] = {
+            "additional_field_to_be": "included in invocation_metadata"
+        }
+        integration["config"]["group"] = "override the group"
+        integration["allowed_tools"] = {
+            "Action1",
+            "Action2",
+        }
+
+        return ActionReturn.GO</code></pre>
             </section>
 
             <!-- Workflows -->
             <section id="workflows" class="content-section">
                 <h2>Workflows</h2>
                 <p>Workflows orchestrate multiple agents to accomplish complex tasks through coordinated execution.</p>
-
                 <h3>Sequential Workflows</h3>
                 <pre><code>from agentflow import Workflow
 

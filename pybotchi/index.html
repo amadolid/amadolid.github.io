@@ -31,19 +31,18 @@
           <a href="#life-cycle" class="nav-link">Life Cycle Hooks</a>
           <a href="#grpc" class="nav-link">gRPC (Scaling)</a>
           <a href="#mcp" class="nav-link">MCP</a>
-          <a href="#memory" class="nav-link">Memory Systems</a>
         </div>
         <div class="nav-section">
           <h3>Advanced</h3>
-          <a href="#orchestration" class="nav-link">Orchestration Patterns</a>
-          <a href="#scaling" class="nav-link">Scaling & Performance</a>
-          <a href="#monitoring" class="nav-link">Monitoring</a>
+          <a href="#special" class="nav-link">Special Attributes</a>
+          <a href="#nesting" class="nav-link">Complex Nesting</a>
+          <a href="#runtime" class="nav-link">Runtime Builder</a>
         </div>
         <div class="nav-section">
           <h3>Resources</h3>
-          <a href="#api" class="nav-link">API Reference</a>
+          <a href="#roadmap" class="nav-link">Roadmap</a>
           <a href="#examples" class="nav-link">Examples</a>
-          <a href="#contributing" class="nav-link">Contributing</a>
+          <a href="#contrib" class="nav-link">Contributing</a>
         </div>
       </nav>
       <main class="main-content">
@@ -1237,7 +1236,9 @@ class GeneralChat(GRPCAction):
           </p>
 
           <h4>Via Remote Action Configuration</h4>
-          <pre><code class="language-python">from grpc_prerequisite import Action, ActionReturn, ChatRole, GRPCContext
+          <pre><code class="language-python">from pybotchi import Action, ActionReturn, ChatRole
+from pybotchi.grpc import GRPCContext
+
 from pydantic import Field
 
 class MathProblem(Action):
@@ -1256,7 +1257,7 @@ class MathProblem(Action):
         return ActionReturn.GO</code></pre>
 
           <h4>Via Local Action Override</h4>
-          <pre><code class="language-python">from grpc_prerequisite import GRPCAction, GRPCConnection, GRPCRemoteAction
+          <pre><code class="language-python">from pybotchi.grpc import GRPCAction, GRPCConnection, GRPCRemoteAction
 
 class GeneralChat(GRPCAction):
     """Casual Generic Chat."""
@@ -1385,15 +1386,30 @@ class GeneralChat(GRPCAction):
               <strong>server.py</strong> - Remote Action Definitions
             </summary>
             <div class="collapsible-content">
-              <pre><code class="language-python">from grpc_prerequisite import (
-    Action,
-    ActionReturn,
-    ChatRole,
-    GRPCAction,
-    GRPCConnection,
-    GRPCContext,
-)
+              <pre><code class="language-python">from os import getenv
+
+from dotenv import load_dotenv
+
+from langchain_openai import AzureChatOpenAI
+
+from pybotchi import Action, ActionReturn, ChatRole, LLM
+from pybotchi.grpc import GRPCAction, GRPCConnection, GRPCContext
+
 from pydantic import Field
+
+load_dotenv()
+
+LLM.add(
+    base=AzureChatOpenAI(
+        api_key=getenv("CHAT_KEY"),  # type: ignore[arg-type]
+        azure_endpoint=getenv("CHAT_ENDPOINT"),
+        azure_deployment=getenv("CHAT_DEPLOYMENT"),
+        model=getenv("CHAT_MODEL"),
+        api_version=getenv("CHAT_VERSION"),
+        temperature=int(getenv("CHAT_TEMPERATURE", "1")),
+        stream_usage=True,
+    )
+)
 
 
 class MathProblem(Action):
@@ -1493,17 +1509,35 @@ class StoryTelling(Action):
             </summary>
             <div class="collapsible-content">
               <pre><code class="language-python">from asyncio import run
+from os import getenv
 from json import dumps
-from grpc_prerequisite import (
-    Action,
-    ActionReturn,
-    ChatRole,
+
+from dotenv import load_dotenv
+
+from langchain_openai import AzureChatOpenAI
+
+from pybotchi import Action, ActionReturn, ChatRole, LLM
+from pybotchi.grpc import (
     GRPCAction,
     GRPCConnection,
     GRPCContext,
     GRPCIntegration,
     GRPCRemoteAction,
     graph,
+)
+
+load_dotenv()
+
+LLM.add(
+    base=AzureChatOpenAI(
+        api_key=getenv("CHAT_KEY"),  # type: ignore[arg-type]
+        azure_endpoint=getenv("CHAT_ENDPOINT"),
+        azure_deployment=getenv("CHAT_DEPLOYMENT"),
+        model=getenv("CHAT_MODEL"),
+        api_version=getenv("CHAT_VERSION"),
+        temperature=int(getenv("CHAT_TEMPERATURE", "1")),
+        stream_usage=True,
+    )
 )
 
 
@@ -1830,378 +1864,1022 @@ class ed0,ed1,ed2 animate</code></pre>
           </div>
         </section>
 
-        <!-- Tools -->
-        <section id="tools" class="content-section">
-          <h2>Tools & Plugins</h2>
+        <section id="mcp" class="content-section">
+          <h2>MCP (Model Context Protocol)</h2>
           <p>
-            Extend agent capabilities with tools and plugins for external
-            integrations.
+            PyBotchi's <strong>MCP support</strong> enables seamless integration
+            with the <strong>Model Context Protocol</strong>, allowing your
+            Actions to function as MCP servers that can be consumed by any
+            MCP-compatible client. This lets you expose your agent capabilities
+            as standardized tools while maintaining PyBotchi's powerful
+            orchestration features.
           </p>
 
-          <h3>Built-in Tools</h3>
+          <div class="note">
+            <strong>Key concept:</strong> PyBotchi Actions can serve as MCP
+            tools, bridging the gap between PyBotchi's agent architecture and
+            the broader MCP ecosystem. Your Actions become discoverable,
+            callable tools for any MCP client.
+          </div>
+
+          <h3>Dual-Mode Architecture</h3>
+          <p>PyBotchi supports MCP in two complementary ways:</p>
           <ul>
-            <li><strong>web_search</strong>: Search the web for information</li>
             <li>
-              <strong>calculator</strong>: Perform mathematical calculations
+              <strong>MCP Server Mode:</strong> Expose your Actions as MCP tools
+              that can be discovered and invoked by external MCP clients (Claude
+              Desktop, IDEs, etc.)
             </li>
-            <li><strong>file_reader</strong>: Read and process files</li>
-            <li><strong>api_caller</strong>: Make HTTP requests</li>
+            <li>
+              <strong>MCP Client Mode:</strong> Connect to external MCP servers
+              and integrate their tools as child Actions within your PyBotchi
+              orchestration graph
+            </li>
           </ul>
 
-          <h3>Creating Custom Tools</h3>
-          <pre><code>from agentflow import Tool
+          <div class="highlight-box">
+            <h3>Why MCP Integration Matters</h3>
+            <p>
+              The Model Context Protocol is rapidly becoming the standard for AI
+              tool integration. By supporting MCP, PyBotchi Actions can be
+              consumed by any MCP-compatible application while maintaining all
+              the benefits of PyBotchi's lifecycle management, context
+              synchronization, and orchestration patterns.
+            </p>
+            <p>
+              This means your carefully crafted agent workflows can be exposed
+              as simple tools to external systems, or you can incorporate
+              external MCP tools into your complex multi-agent orchestrations.
+            </p>
+          </div>
 
-@Tool.register("weather")
-def get_weather(location: str) -> str:
-    """Get current weather for a location."""
-    # Your implementation here
-    return f"Weather in {location}: Sunny, 72°F"
+          <h3>Transport Protocols</h3>
+          <p>PyBotchi MCP servers support multiple transport mechanisms:</p>
+          <ul>
+            <li>
+              <strong>Server-Sent Events (SSE):</strong> Real-time streaming
+              protocol ideal for long-running operations and progressive updates
+            </li>
+            <li>
+              <strong>Streamable HTTP (SHTTP):</strong> HTTP-based protocol for
+              simpler integration with existing web infrastructure
+            </li>
+          </ul>
 
-# Use in an agent
-agent = Agent(
-    name="weather_agent",
-    tools=["weather"]
-)</code></pre>
+          <h3>Core Capabilities</h3>
+          <div class="features-grid">
+            <div class="feature-card">
+              <div class="feature-icon">🔌</div>
+              <h3>Standard Protocol Support</h3>
+              <p>
+                Full compatibility with MCP specification. Your Actions
+                automatically generate proper tool schemas and handle the
+                complete request/response cycle.
+              </p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🎯</div>
+              <h3>Group-Based Organization</h3>
+              <p>
+                Organize Actions into logical groups with separate MCP
+                endpoints. Each group exposes only its designated Actions,
+                enabling fine-grained access control.
+              </p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🔄</div>
+              <h3>Bidirectional Integration</h3>
+              <p>
+                Serve your Actions as MCP tools OR consume external MCP servers
+                as child Actions. Mix and match based on your architecture
+                needs.
+              </p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">⚡</div>
+              <h3>Concurrent Execution</h3>
+              <p>
+                MCP Actions support the same concurrent execution patterns as
+                local Actions. Enable <code>__concurrent__</code> for parallel
+                processing across MCP boundaries.
+              </p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🏗️</div>
+              <h3>FastAPI Integration</h3>
+              <p>
+                Mount MCP endpoints directly to existing FastAPI applications or
+                run standalone with Starlette. Integrate seamlessly with your
+                current web infrastructure.
+              </p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🛠️</div>
+              <h3>Complete Lifecycle Control</h3>
+              <p>
+                All PyBotchi lifecycle hooks work with MCP Actions. Use
+                <code>pre_mcp</code>
+                for authentication, override context propagation, and maintain
+                full control.
+              </p>
+            </div>
+          </div>
 
-          <h3>Plugin System</h3>
-          <pre><code>from agentflow import Plugin
+          <h3>When to Use MCP</h3>
+          <ul>
+            <li>
+              <strong>External tool exposure:</strong> Make your PyBotchi agents
+              available to Claude Desktop, IDEs, or other MCP-compatible
+              applications.
+            </li>
+            <li>
+              <strong>Third-party integration:</strong> Consume tools from
+              external MCP servers (Brave Search, file systems, databases)
+              within your PyBotchi orchestration.
+            </li>
+            <li>
+              <strong>Ecosystem participation:</strong> Contribute your
+              specialized agents to the growing MCP ecosystem while maintaining
+              PyBotchi's advanced features.
+            </li>
+            <li>
+              <strong>Standardized APIs:</strong> Provide a standard interface
+              to your agents without sacrificing PyBotchi's orchestration
+              capabilities.
+            </li>
+            <li>
+              <strong>Hybrid architectures:</strong> Combine PyBotchi's
+              orchestration with MCP's broad ecosystem support for maximum
+              flexibility.
+            </li>
+          </ul>
 
-class DatabasePlugin(Plugin):
-    def setup(self):
-        self.conn = connect_to_db()
-    
-    def query(self, sql):
-        return self.conn.execute(sql)
+          <div class="note">
+            <strong>Design principle:</strong> Use MCP when you need
+            standardized tool integration with the broader AI ecosystem while
+            maintaining PyBotchi's powerful orchestration features.
+          </div>
 
-# Register plugin
-agent.add_plugin(DatabasePlugin())</code></pre>
-        </section>
-
-        <!-- Memory -->
-        <section id="memory" class="content-section">
-          <h2>Memory Systems</h2>
+          <h3>Complete Example</h3>
           <p>
-            AgentFlow provides flexible memory systems for maintaining context
-            and learning from interactions.
+            This example demonstrates both MCP server and client modes, showing
+            how to expose Actions as MCP tools and consume them from a PyBotchi
+            client.
           </p>
 
-          <h3>Short-term Memory</h3>
-          <pre><code>from agentflow import ShortTermMemory
+          <details class="collapsible-section">
+            <summary class="collapsible-summary">
+              <strong>server.py (standalone)</strong> - MCP Server (Exposing
+              Actions as Tools)
+            </summary>
+            <div class="collapsible-content">
+              <pre><code class="language-python">from os import getenv
 
-memory = ShortTermMemory(max_size=10)
-agent = Agent(name="assistant", memory=memory)
+from dotenv import load_dotenv
 
-# Memory is automatically managed
-agent.run("Remember: User prefers Python")
-agent.run("What language does the user prefer?")</code></pre>
+from langchain_openai import AzureChatOpenAI
 
-          <h3>Long-term Memory</h3>
-          <pre><code>from agentflow import LongTermMemory
+from pydantic import Field
+from uvicorn import run
 
-memory = LongTermMemory(
-    backend="redis",
-    embedding_model="text-embedding-ada-002"
+from pybotchi import Action, ActionReturn, ChatRole, Context, LLM
+from pybotchi.mcp import build_mcp_app
+
+load_dotenv()
+
+LLM.add(
+    base=AzureChatOpenAI(
+        api_key=getenv("CHAT_KEY"),  # type: ignore[arg-type]
+        azure_endpoint=getenv("CHAT_ENDPOINT"),
+        azure_deployment=getenv("CHAT_DEPLOYMENT"),
+        model=getenv("CHAT_MODEL"),
+        api_version=getenv("CHAT_VERSION"),
+        temperature=int(getenv("CHAT_TEMPERATURE", "1")),
+        stream_usage=True,
+    )
 )
 
-# Store and retrieve relevant information
-memory.store("User expertise: Machine Learning")
-relevant = memory.search("What does the user know?")</code></pre>
 
-          <h3>Vector Memory</h3>
-          <pre><code>from agentflow import VectorMemory
+class MathProblem(Action):
+    """Solve the math problem."""
 
-memory = VectorMemory(
-    dimension=1536,
-    index_type="hnsw"
+    __groups__ = {"mcp": {"group-1"}}
+
+    equation: str = Field(description="The mathematical equation to solve (e.g., '2x + 5')")
+
+    async def pre(self, context: Context) -> ActionReturn:
+        """Execute pre process."""
+        message = await context.llm.ainvoke(f"Solve `{self.equation}`")
+        await context.add_usage(self, context.llm.model_name, message.usage_metadata)
+        await context.add_response(self, message.text)
+        return ActionReturn.GO
+
+
+class Translation(Action):
+    """Translate to specific language."""
+
+    __groups__ = {"mcp": {"group-1"}}
+
+    message: str = Field(description="The text content to be translated.")
+    language: str = Field(description="The ISO code or name of the target language.")
+
+    async def pre(self, context: Context) -> ActionReturn:
+        """Execute pre process."""
+        message = await context.llm.ainvoke(f"Translate `{self.message}` to {self.language}")
+        await context.add_usage(self, context.llm.model_name, message.usage_metadata)
+        await context.add_response(self, message.text)
+        return ActionReturn.GO
+
+
+class JokeWithStoryTelling(Action):
+    """Tell Joke or Story."""
+
+    __groups__ = {"mcp": {"group-1", "group-2"}}
+
+    query: str
+
+    async def pre(self, context: Context) -> ActionReturn:
+        """Execute pre process."""
+        await context.add_message(ChatRole.USER, self.query)
+        return ActionReturn.GO
+
+    class Joke(Action):
+        """Generate a joke."""
+
+        __concurrent__ = True
+
+        async def pre(self, context: Context) -> ActionReturn:
+            """Execute pre process."""
+            print("Executing Joke...")
+            message = await context.llm.ainvoke("generate very short joke")
+            await context.add_usage(self, context.llm.model_name, message.usage_metadata)
+            await context.add_response(self, message.text)
+            print("Done executing Joke...")
+            return ActionReturn.GO
+
+    class StoryTelling(Action):
+        """Tell a story."""
+
+        __concurrent__ = True
+
+        async def pre(self, context: Context) -> ActionReturn:
+            """Execute pre process."""
+            print("Executing StoryTelling...")
+            message = await context.llm.ainvoke("generate a very short story")
+            await context.add_usage(self, context.llm.model_name, message.usage_metadata)
+            await context.add_response(self, message.text)
+            print("Done executing StoryTelling...")
+            return ActionReturn.GO
+
+    async def post(self, context: Context) -> ActionReturn:
+        """Execute post process."""
+        print("Executing post...")
+        message = await context.llm.ainvoke(context.prompts)
+        await context.add_usage(self, context.llm.model_name, message.usage_metadata, "combine")
+        await context.add_message(ChatRole.ASSISTANT, message.text)
+        print("Done executing post...")
+        return ActionReturn.END
+
+
+##################################################################################
+#                                   Direct MCP                                   #
+#                      SSE paths /group-1/sse & /group-2/sse                     #
+#                Streamable HTTP paths /group-1/mcp & /group-2/mcp               #
+##################################################################################
+
+app = build_mcp_app(transport="streamable-http")
+
+if __name__ == "__main__":
+    run(
+        app,
+        host="127.0.0.1",
+        port=8000,
+        log_level="info",
+    )</code></pre>
+            </div>
+          </details>
+
+          <details class="collapsible-section">
+            <summary class="collapsible-summary">
+              <strong>server.py (mounted)</strong> - Alternative: Mount to
+              Existing FastAPI App
+            </summary>
+            <div class="collapsible-content">
+              <pre><code class="language-python">from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from os import getenv
+
+from dotenv import load_dotenv
+
+from fastapi import FastAPI
+
+from langchain_openai import AzureChatOpenAI
+
+from pydantic import Field
+from uvicorn import run
+
+from pybotchi import Action, ActionReturn, ChatRole, Context, LLM
+from pybotchi.mcp import mount_mcp_app
+
+load_dotenv()
+
+LLM.add(
+    base=AzureChatOpenAI(
+        api_key=getenv("CHAT_KEY"),  # type: ignore[arg-type]
+        azure_endpoint=getenv("CHAT_ENDPOINT"),
+        azure_deployment=getenv("CHAT_DEPLOYMENT"),
+        model=getenv("CHAT_MODEL"),
+        api_version=getenv("CHAT_VERSION"),
+        temperature=int(getenv("CHAT_TEMPERATURE", "1")),
+        stream_usage=True,
+    )
 )
 
-# Semantic search across memories
-results = memory.similarity_search(
-    query="AI research",
-    top_k=5
-)</code></pre>
-        </section>
 
-        <!-- Orchestration -->
-        <section id="orchestration" class="content-section">
-          <h2>Orchestration Patterns</h2>
-          <p>
-            Learn advanced patterns for coordinating complex multi-agent
-            systems.
-          </p>
+class MathProblem(Action):
+    """Solve the math problem."""
 
-          <h3>Hierarchical Orchestration</h3>
-          <p>Use a manager agent to coordinate worker agents:</p>
-          <pre><code>manager = Agent(
-    name="manager",
-    system_prompt="Coordinate workers to complete tasks"
+    __groups__ = {"mcp": {"group-1"}}
+
+    equation: str = Field(description="The mathematical equation to solve (e.g., '2x + 5')")
+
+    async def pre(self, context: Context) -> ActionReturn:
+        """Execute pre process."""
+        message = await context.llm.ainvoke(f"Solve `{self.equation}`")
+        await context.add_usage(self, context.llm.model_name, message.usage_metadata)
+        await context.add_response(self, message.text)
+        return ActionReturn.GO
+
+
+class Translation(Action):
+    """Translate to specific language."""
+
+    __groups__ = {"mcp": {"group-1"}}
+
+    message: str = Field(description="The text content to be translated.")
+    language: str = Field(description="The ISO code or name of the target language.")
+
+    async def pre(self, context: Context) -> ActionReturn:
+        """Execute pre process."""
+        message = await context.llm.ainvoke(f"Translate `{self.message}` to {self.language}")
+        await context.add_usage(self, context.llm.model_name, message.usage_metadata)
+        await context.add_response(self, message.text)
+        return ActionReturn.GO
+
+
+class JokeWithStoryTelling(Action):
+    """Tell Joke or Story."""
+
+    __groups__ = {"mcp": {"group-1", "group-2"}}
+
+    query: str
+
+    async def pre(self, context: Context) -> ActionReturn:
+        """Execute pre process."""
+        await context.add_message(ChatRole.USER, self.query)
+        return ActionReturn.GO
+
+    class Joke(Action):
+        """Generate a joke."""
+
+        __concurrent__ = True
+
+        async def pre(self, context: Context) -> ActionReturn:
+            """Execute pre process."""
+            print("Executing Joke...")
+            message = await context.llm.ainvoke("generate very short joke")
+            await context.add_usage(self, context.llm.model_name, message.usage_metadata)
+            await context.add_response(self, message.text)
+            print("Done executing Joke...")
+            return ActionReturn.GO
+
+    class StoryTelling(Action):
+        """Tell a story."""
+
+        __concurrent__ = True
+
+        async def pre(self, context: Context) -> ActionReturn:
+            """Execute pre process."""
+            print("Executing StoryTelling...")
+            message = await context.llm.ainvoke("generate a very short story")
+            await context.add_usage(self, context.llm.model_name, message.usage_metadata)
+            await context.add_response(self, message.text)
+            print("Done executing StoryTelling...")
+            return ActionReturn.GO
+
+    async def post(self, context: Context) -> ActionReturn:
+        """Execute post process."""
+        print("Executing post...")
+        message = await context.llm.ainvoke(context.prompts)
+        await context.add_usage(self, context.llm.model_name, message.usage_metadata, "combine")
+        await context.add_message(ChatRole.ASSISTANT, message.text)
+        print("Done executing post...")
+        return ActionReturn.END
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Override life cycle."""
+    async with mount_mcp_app(app, transport="streamable-http"):
+        yield
+
+
+app = FastAPI(lifespan=lifespan)
+if __name__ == "__main__":
+    run(
+        app,
+        host="127.0.0.1",
+        port=8000,
+        log_level="info",
+    )
+</code></pre>
+            </div>
+          </details>
+
+          <details class="collapsible-section">
+            <summary class="collapsible-summary">
+              <strong>client.py</strong> - MCP Client (Consuming MCP Tools)
+            </summary>
+            <div class="collapsible-content">
+              <pre><code class="language-python">from asyncio import run
+from json import dumps
+from os import getenv
+
+from dotenv import load_dotenv
+
+from langchain_openai import AzureChatOpenAI
+
+from pybotchi import ActionReturn, ChatRole, LLM
+from pybotchi.mcp import MCPAction, MCPConnection, MCPContext, MCPIntegration, graph
+
+load_dotenv()
+
+LLM.add(
+    base=AzureChatOpenAI(
+        api_key=getenv("CHAT_KEY"),  # type: ignore[arg-type]
+        azure_endpoint=getenv("CHAT_ENDPOINT"),
+        azure_deployment=getenv("CHAT_DEPLOYMENT"),
+        model=getenv("CHAT_MODEL"),
+        api_version=getenv("CHAT_VERSION"),
+        temperature=int(getenv("CHAT_TEMPERATURE", "1")),
+        stream_usage=True,
+    )
 )
 
-workers = [
-    Agent(name="worker_1", specialty="data"),
-    Agent(name="worker_2", specialty="analysis"),
-    Agent(name="worker_3", specialty="reporting")
+
+class GeneralChat(MCPAction):
+    """Casual Generic Chat."""
+
+    __mcp_connections__ = [MCPConnection("testing", "SHTTP", "http://localhost:8000/group-1/mcp")]
+
+    async def pre_mcp(self, context: MCPContext) -> ActionReturn:
+        """Execute pre mcp execution."""
+        print("Trigger anything here before mcp client connection")
+        print("Build context.integrations['testing']['config']")
+        print("Refresh tokens")
+        print("etc ...")
+        return ActionReturn.GO
+
+
+async def test() -> None:
+    """Chat."""
+    integrations: dict[str, MCPIntegration] = {"testing": {}}
+    context = MCPContext(
+        prompts=[
+            {
+                "role": ChatRole.SYSTEM,
+                "content": "",
+            },
+            {
+                "role": ChatRole.USER,
+                "content": "What is 4 x 4 and what is the english of `Kamusta?`",
+            },
+        ],
+        integrations=integrations,
+    )
+    action, result = await context.start(GeneralChat)
+    print(dumps(context.prompts, indent=4))
+    print(dumps(action.serialize(), indent=4))
+
+    general_chat_graph = await graph(GeneralChat, {"IgnoredAction": False}, integrations)
+    print(general_chat_graph.flowchart())
+
+
+run(test())</code></pre>
+            </div>
+          </details>
+
+          <h3>Running the Example</h3>
+
+          <h4>Start the MCP Server</h4>
+          <pre><code class="language-bash">python3 server.py</code></pre>
+
+          <details class="collapsible-section">
+            <summary class="collapsible-summary">Server Output</summary>
+            <div class="collapsible-content">
+              <pre><code class="language-bash">INFO:     Started server process [642763]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)</code></pre>
+            </div>
+          </details>
+
+          <h4>Run the Client</h4>
+          <pre><code class="language-bash">python3 client.py</code></pre>
+
+          <details class="collapsible-section">
+            <summary class="collapsible-summary">
+              Client Output - Execution Flow
+            </summary>
+            <div class="collapsible-content">
+              <pre><code class="language-bash">Trigger anything here before mcp client connection
+Build context.integrations['testing']['config']
+Refresh tokens
+etc ...</code></pre>
+            </div>
+          </details>
+
+          <details class="collapsible-section">
+            <summary class="collapsible-summary">
+              Client Output - Context & Usage
+            </summary>
+            <div class="collapsible-content">
+              <pre><code class="language-json">[
+    {
+        "role": "system",
+        "content": ""
+    },
+    {
+        "role": "user",
+        "content": "What is 4 x 4 and what is the english of `Kamusta?`"
+    },
+    {
+        "content": "",
+        "role": "assistant",
+        "tool_calls": [
+            {
+                "id": "call_3d3962b3683e4934abea6590f17ddd54",
+                "function": {
+                    "name": "Mathproblem",
+                    "arguments": "{\"equation\":\"4 x 4\"}"
+                },
+                "type": "function"
+            }
+        ]
+    },
+    {
+        "content": "`4 x 4 = 16`",
+        "role": "tool",
+        "tool_call_id": "call_3d3962b3683e4934abea6590f17ddd54"
+    },
+    {
+        "content": "",
+        "role": "assistant",
+        "tool_calls": [
+            {
+                "id": "call_6ad08ce39f3e4eca940e2715f845633b",
+                "function": {
+                    "name": "Translation",
+                    "arguments": "{\"message\":\"Kamusta?\",\"language\":\"English\"}"
+                },
+                "type": "function"
+            }
+        ]
+    },
+    {
+        "content": "\"Kamusta?\" translates to \"**How are you?**\" in English.",
+        "role": "tool",
+        "tool_call_id": "call_6ad08ce39f3e4eca940e2715f845633b"
+    }
 ]
 
-orchestrator = HierarchicalOrchestrator(
-    manager=manager,
-    workers=workers
-)</code></pre>
+{
+    "name": "GeneralChat",
+    "args": {},
+    "usages": [
+        {
+            "name": "$tool",
+            "model": "gpt-4.1",
+            "usage": {
+                "input_tokens": 274,
+                "output_tokens": 55,
+                "total_tokens": 329,
+                "input_token_details": {
+                    "audio": 0,
+                    "cache_read": 0
+                },
+                "output_token_details": {
+                    "audio": 0,
+                    "reasoning": 0
+                }
+            }
+        }
+    ],
+    "actions": [
+        {
+            "name": "Mathproblem",
+            "args": {
+                "equation": "4 x 4"
+            },
+            "usages": [],
+            "actions": []
+        },
+        {
+            "name": "Translation",
+            "args": {
+                "message": "Kamusta?",
+                "language": "English"
+            },
+            "usages": [],
+            "actions": []
+        }
+    ]
+}</code></pre>
+            </div>
+          </details>
 
-          <h3>Event-Driven Architecture</h3>
-          <pre><code>from agentflow import EventBus
-
-bus = EventBus()
-
-@bus.on("data_received")
-async def process_data(event):
-    await processor_agent.run(event.data)
-
-@bus.on("processing_complete")
-async def generate_report(event):
-    await reporter_agent.run(event.results)</code></pre>
-        </section>
-
-        <!-- Scaling -->
-        <section id="scaling" class="content-section">
-          <h2>Scaling & Performance</h2>
-          <p>Optimize your agent systems for production workloads.</p>
-
-          <h3>Async Execution</h3>
-          <pre><code>import asyncio
-from agentflow import Agent
-
-agents = [Agent(name=f"agent_{i}") for i in range(10)]
-
-async def run_parallel():
-    tasks = [agent.arun(task) for agent in agents]
-    results = await asyncio.gather(*tasks)
-    return results
-
-results = asyncio.run(run_parallel())</code></pre>
-
-          <h3>Caching</h3>
-          <pre><code>from agentflow import Cache
-
-cache = Cache(backend="redis", ttl=3600)
-agent = Agent(name="cached_agent", cache=cache)
-
-# Responses are automatically cached
-response1 = agent.run("What is 2+2?")  # Cache miss
-response2 = agent.run("What is 2+2?")  # Cache hit</code></pre>
-
-          <h3>Load Balancing</h3>
-          <pre><code>
-from agentflow import LoadBalancer
-
-balancer = LoadBalancer(
-    agents=[agent1, agent2, agent3],
-    strategy="round_robin"
-)
-
-# Requests are distributed across agents
-response = balancer.run("Process this task")</code></pre>
-
-          <h3>Resource Management</h3>
-          <pre><code>from agentflow import ResourceManager
-
-manager = ResourceManager(
-    max_concurrent_agents=10,
-    memory_limit="4GB",
-    timeout=60
-)
-
-workflow = Workflow(resource_manager=manager)</code></pre>
-        </section>
-
-        <!-- Monitoring -->
-        <section id="monitoring" class="content-section">
-          <h2>Monitoring</h2>
+          <details class="collapsible-section">
+            <summary class="collapsible-summary">Mermaid Graph Output</summary>
+            <div class="collapsible-content">
+              <pre><code class="language-bash">flowchart TD
+__main__.GeneralChat{GeneralChat}
+mcp.testing.Jokewithstorytelling[Jokewithstorytelling]
+mcp.testing.Translation[Translation]
+mcp.testing.Mathproblem[Mathproblem]
+__main__.GeneralChat --**MCP** : testing--> mcp.testing.Mathproblem
+__main__.GeneralChat --**MCP** : testing--> mcp.testing.Jokewithstorytelling
+__main__.GeneralChat --**MCP** : testing--> mcp.testing.Translation
+style __main__.GeneralChat fill:#4CAF50,color:#000000</code></pre>
+            </div>
+          </details>
+          <h3>Execution Graph Visualization</h3>
+          <img
+            class="content-img"
+            src="assets/grpc.png"
+            alt="Distributed gRPC execution graph showing local and remote Actions with concurrent execution paths"
+          />
+          <h3>MCP Endpoints Structure</h3>
           <p>
-            Track and debug your agent systems with built-in monitoring tools.
+            PyBotchi automatically generates MCP endpoints based on your Action
+            groups:
+          </p>
+          <ul>
+            <li>
+              <code>/&lt;group-name&gt;/mcp</code> - Streamable HTTP endpoint
+              for the group
+            </li>
+            <li>
+              <code>/&lt;group-name&gt;/sse</code> - Server-Sent Events endpoint
+              for the group
+            </li>
+          </ul>
+          <p>
+            Each endpoint exposes only the Actions assigned to that group via
+            <code>__groups__</code>, enabling fine-grained access control and
+            logical organization.
           </p>
 
-          <h3>Logging</h3>
-          <pre><code>from agentflow import configure_logging
+          <div class="highlight-box">
+            <h3>What This Example Demonstrates</h3>
+            <ul style="list-style-type: none">
+              <li>
+                <strong>MCP server setup:</strong> Actions are automatically
+                exposed as MCP tools with proper schemas
+              </li>
+              <li>
+                <strong>Group organization:</strong> Actions are organized into
+                logical groups with separate endpoints
+              </li>
+              <li>
+                <strong>Client integration:</strong> PyBotchi client consumes
+                MCP tools as if they were local Actions
+              </li>
+              <li>
+                <strong>Nested Actions:</strong>
+                <code>JokeWithStoryTelling</code> contains concurrent child
+                Actions
+              </li>
+              <li>
+                <strong>Lifecycle hooks:</strong> <code>pre_mcp</code> enables
+                authentication and configuration before connection
+              </li>
+              <li>
+                <strong>Transport flexibility:</strong> Support for both SSE and
+                Streamable HTTP transports
+              </li>
+            </ul>
+          </div>
 
-configure_logging(
-    level="DEBUG",
-    format="json",
-    output="agentflow.log"
-)
-
-# Logs are automatically captured
-agent.run("Task with logging")</code></pre>
-
-          <h3>Metrics</h3>
-          <pre><code>from agentflow import MetricsCollector
-
-metrics = MetricsCollector()
-agent = Agent(name="monitored", metrics=metrics)
-
-# View metrics
-print(metrics.get_stats())
-# {
-#   "total_requests": 100,
-#   "avg_latency": 1.2,
-#   "error_rate": 0.02
-# }</code></pre>
-
-          <h3>Tracing</h3>
-          <pre><code>from agentflow import Tracer
-
-tracer = Tracer(backend="jaeger")
-workflow = Workflow(tracer=tracer)
-
-# Traces are automatically collected
-result = workflow.run("Complex task")
-tracer.export_traces("traces.json")</code></pre>
+          <h3>Using MCP with Claude Desktop</h3>
+          <p>
+            Your PyBotchi MCP server can be consumed by Claude Desktop or any
+            other MCP-compatible client. Simply configure the client to connect
+            to your server's MCP endpoint:
+          </p>
+          <pre><code class="language-json">{
+  "mcpServers": {
+    "pybotchi-tools": {
+      "command": "npx",
+      "args": ["mcp-remote", "http://localhost:8000/group-1/mcp"]
+    }
+  }
+}</code></pre>
         </section>
-
-        <!-- API Reference -->
-        <section id="api" class="content-section">
-          <h2>API Reference</h2>
-          <p>Complete API documentation for all AgentFlow components.</p>
-
-          <h3>Core Classes</h3>
-          <ul>
-            <li><strong>Agent</strong>: Base class for creating AI agents</li>
-            <li><strong>Workflow</strong>: Orchestrate multiple agents</li>
-            <li><strong>Tool</strong>: Extend agent capabilities</li>
-            <li><strong>Memory</strong>: Manage agent memory systems</li>
-          </ul>
-
-          <h3>Agent API</h3>
-          <pre><code>class Agent:
-    def __init__(
-        self,
-        name: str,
-        model: str = "gpt-4",
-        system_prompt: str = "",
-        temperature: float = 0.7,
-        max_tokens: int = 2000,
-        tools: List[str] = None,
-        memory: Memory = None
-    ):
-        """Initialize an agent."""
-        pass
-    
-    def run(self, task: str) -> str:
-        """Execute a task synchronously."""
-        pass
-    
-    async def arun(self, task: str) -> str:
-        """Execute a task asynchronously."""
-        pass
-    
-    def stream(self, task: str) -> Iterator[str]:
-        """Stream response chunks."""
-        pass</code></pre>
-          <div class="note">
-            <strong>Note:</strong> Full API documentation is available at
-            <code>docs.agentflow.dev</code>
+        <section id="wip" class="content-section">
+          <div class="wip-container">
+            <div class="wip-icon">🚧</div>
+            <h2>Work in Progress</h2>
+            <p class="wip-message">
+              This section is currently under construction. Check back soon for
+              updates!
+            </p>
           </div>
         </section>
-
-        <!-- Examples -->
         <section id="examples" class="content-section">
           <h2>Examples</h2>
-          <p>Real-world examples to help you get started quickly.</p>
-
-          <h3>Customer Support Bot</h3>
-          <pre><code>from agentflow import Agent, Tool
-
-@Tool.register("knowledge_base")
-def search_kb(query: str) -> str:
-    # Search your knowledge base
-    return "FAQ answer here"
-
-support_agent = Agent(
-    name="support",
-    system_prompt="You are a helpful customer support agent.",
-    tools=["knowledge_base"]
-)
-
-response = support_agent.run(
-    "How do I reset my password?"
-)</code></pre>
-
-          <h3>Research Assistant</h3>
-          <pre><code>researcher = Agent(
-    name="researcher",
-    tools=["web_search", "summarizer"]
-)
-
-analyst = Agent(
-    name="analyst",
-    system_prompt="Analyze research findings"
-)
-
-workflow = Workflow()
-workflow.add_agent(researcher)
-workflow.add_agent(analyst)
-workflow.connect(researcher, analyst)
-
-report = workflow.run(
-    "Research the latest trends in AI"
-)</code></pre>
-
-          <h3>Code Review System</h3>
-          <pre><code>reviewer = Agent(
-    name="reviewer",
-    system_prompt="Review code for best practices"
-)
-
-security = Agent(
-    name="security",
-    system_prompt="Check for security vulnerabilities"
-)
-
-workflow = Workflow(mode="parallel")
-workflow.add_agent(reviewer)
-workflow.add_agent(security)
-
-results = workflow.run(code_snippet)</code></pre>
-        </section>
-
-        <!-- Contributing -->
-        <section id="contributing" class="content-section">
-          <h2>Contributing</h2>
           <p>
-            We welcome contributions from the community! Here's how you can
-            help.
+            Explore practical examples demonstrating PyBotchi's capabilities,
+            from basic implementations to complex real-world applications. All
+            examples are available in the GitHub repository with complete,
+            runnable code.
           </p>
 
-          <h3>Getting Started</h3>
-          <ol>
-            <li>Fork the repository on GitHub</li>
-            <li>Clone your fork locally</li>
-            <li>Create a new branch for your feature</li>
-            <li>Make your changes and write tests</li>
-            <li>Submit a pull request</li>
-          </ol>
+          <div class="examples-grid">
+            <div class="example-category">
+              <h3>🚀 Getting Started</h3>
+              <p class="category-description">
+                Start here if you're new to PyBotchi. These examples demonstrate
+                the core concepts with minimal code, perfect for understanding
+                the fundamentals.
+              </p>
+              <ul class="example-list">
+                <li>
+                  <a
+                    href="https://github.com/amadolid/pybotchi/blob/master/examples/tiny.py"
+                    target="_blank"
+                    class="example-link"
+                  >
+                    <span class="example-name">tiny.py</span>
+                    <span class="example-desc"
+                      >Minimal implementation to get you started</span
+                    >
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/amadolid/pybotchi/blob/master/examples/full_spec.py"
+                    target="_blank"
+                    class="example-link"
+                  >
+                    <span class="example-name">full_spec.py</span>
+                    <span class="example-desc"
+                      >Complete feature demonstration showcasing all core
+                      capabilities</span
+                    >
+                  </a>
+                </li>
+              </ul>
+            </div>
 
-          <h3>Development Setup</h3>
-          <pre><code>git clone https://github.com/yourusername/agentflow.git
-cd agentflow
-pip install -e ".[dev]"
-pre-commit install</code></pre>
+            <div class="example-category">
+              <h3>🔄 Execution Patterns</h3>
+              <p class="category-description">
+                Learn how to control execution flow in your agent systems.
+                Master sequential processing, nested workflows, and complex
+                orchestration patterns.
+              </p>
+              <ul class="example-list">
+                <li>
+                  <a
+                    href="https://github.com/amadolid/pybotchi/blob/master/examples/sequential.py"
+                    target="_blank"
+                    class="example-link"
+                  >
+                    <span class="example-name">sequential.py</span>
+                    <span class="example-desc"
+                      >Sequential action execution via iteration or multi-tool
+                      calls</span
+                    >
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/amadolid/pybotchi/blob/master/examples/nested_combination.py"
+                    target="_blank"
+                    class="example-link"
+                  >
+                    <span class="example-name">nested_combination.py</span>
+                    <span class="example-desc"
+                      >Complex hierarchical agent structures with parent-child
+                      relationships</span
+                    >
+                  </a>
+                </li>
+              </ul>
+            </div>
 
-          <h3>Running Tests</h3>
-          <pre><code>pytest tests/
-pytest --cov=agentflow tests/</code></pre>
+            <div class="example-category">
+              <h3>⚡ Parallel Processing</h3>
+              <p class="category-description">
+                Maximize performance with concurrent execution. These examples
+                show how to run multiple actions simultaneously using async
+                patterns and multi-threading.
+              </p>
+              <ul class="example-list">
+                <li>
+                  <a
+                    href="https://github.com/amadolid/pybotchi/blob/master/examples/concurrent_combination.py"
+                    target="_blank"
+                    class="example-link"
+                  >
+                    <span class="example-name">concurrent_combination.py</span>
+                    <span class="example-desc"
+                      >Async-based parallel action execution for I/O-bound
+                      tasks</span
+                    >
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/amadolid/pybotchi/blob/master/examples/concurrent_threading_combination.py"
+                    target="_blank"
+                    class="example-link"
+                  >
+                    <span class="example-name"
+                      >concurrent_threading_combination.py</span
+                    >
+                    <span class="example-desc"
+                      >Thread-based parallel processing for CPU-bound
+                      operations</span
+                    >
+                  </a>
+                </li>
+              </ul>
+            </div>
 
-          <h3>Code Style</h3>
-          <p>
-            We use <code>black</code> for formatting and <code>ruff</code> for
-            linting:
-          </p>
-          <pre><code>black .
-ruff check .</code></pre>
+            <div class="example-category">
+              <h3>🌐 Distributed Systems</h3>
+              <p class="category-description">
+                Scale your agents across multiple servers with gRPC. Deploy
+                compute-intensive actions remotely while maintaining unified
+                orchestration.
+              </p>
+              <ul class="example-list">
+                <li>
+                  <a
+                    href="https://github.com/amadolid/pybotchi/blob/master/examples/grpc/grpc_pybotchi_agent.py"
+                    target="_blank"
+                    class="example-link"
+                  >
+                    <span class="example-name">grpc_pybotchi_agent.py</span>
+                    <span class="example-desc"
+                      >Set up a gRPC server to expose actions as remote
+                      services</span
+                    >
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/amadolid/pybotchi/blob/master/examples/grpc/grpc_pybotchi_client.py"
+                    target="_blank"
+                    class="example-link"
+                  >
+                    <span class="example-name">grpc_pybotchi_client.py</span>
+                    <span class="example-desc"
+                      >Connect to remote gRPC servers and orchestrate
+                      distributed agents</span
+                    >
+                  </a>
+                </li>
+              </ul>
+            </div>
 
-          <div class="note">
-            <strong>Note:</strong> Please read our
-            <code>CONTRIBUTING.md</code> for detailed guidelines.
+            <div class="example-category">
+              <h3>🔌 MCP Protocol</h3>
+              <p class="category-description">
+                Integrate with the Model Context Protocol ecosystem. Expose your
+                agents as MCP tools or consume external MCP servers within your
+                workflows.
+              </p>
+              <ul class="example-list">
+                <li>
+                  <a
+                    href="https://github.com/amadolid/pybotchi/blob/master/examples/mcp/mcp_pybotchi_agent.py"
+                    target="_blank"
+                    class="example-link"
+                  >
+                    <span class="example-name">mcp_pybotchi_agent.py</span>
+                    <span class="example-desc"
+                      >Create an MCP server to expose actions to Claude Desktop
+                      and other clients</span
+                    >
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/amadolid/pybotchi/blob/master/examples/mcp/mcp_pybotchi_client.py"
+                    target="_blank"
+                    class="example-link"
+                  >
+                    <span class="example-name">mcp_pybotchi_client.py</span>
+                    <span class="example-desc"
+                      >Consume MCP servers as child actions in your
+                      orchestration</span
+                    >
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/amadolid/pybotchi/blob/master/examples/mcp/mcp_pybotchi_client_for_mcp_atlassian.py"
+                    target="_blank"
+                    class="example-link"
+                  >
+                    <span class="example-name"
+                      >mcp_pybotchi_client_for_mcp_atlassian.py</span
+                    >
+                    <span class="example-desc"
+                      >Integrate Atlassian's MCP services (Jira, Confluence)
+                      into PyBotchi workflows</span
+                    >
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div class="example-category">
+              <h3>💼 Production Use Cases</h3>
+              <p class="category-description">
+                Real-world applications demonstrating PyBotchi in production
+                scenarios with advanced patterns like WebSocket communication
+                and streaming responses.
+              </p>
+              <ul class="example-list">
+                <li>
+                  <a
+                    href="https://github.com/amadolid/pybotchi/blob/master/examples/interactive_action.py"
+                    target="_blank"
+                    class="example-link"
+                  >
+                    <span class="example-name">interactive_action.py</span>
+                    <span class="example-desc"
+                      >Real-time bidirectional communication using WebSocket for
+                      interactive agents</span
+                    >
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div class="example-category">
+              <h3>⚖️ Framework Comparisons</h3>
+              <p class="category-description">
+                See how PyBotchi compares to other agent frameworks. Same
+                problem, different approaches—compare code clarity, flexibility,
+                and implementation complexity.
+              </p>
+              <ul class="example-list">
+                <li>
+                  <a
+                    href="https://github.com/amadolid/pybotchi/blob/master/examples/vs/pybotchi_approach.py"
+                    target="_blank"
+                    class="example-link"
+                  >
+                    <span class="example-name">PyBotchi Implementation</span>
+                    <span class="example-desc"
+                      >Weather agent using PyBotchi's lifecycle and
+                      orchestration patterns</span
+                    >
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/amadolid/pybotchi/blob/master/examples/vs/langgraph_approach.py"
+                    target="_blank"
+                    class="example-link"
+                  >
+                    <span class="example-name">LangGraph Implementation</span>
+                    <span class="example-desc"
+                      >Same weather agent built with LangGraph for direct
+                      comparison</span
+                    >
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="examples-footer">
+            <p>
+              Clone the repository and run them locally to see PyBotchi in
+              action.
+            </p>
+            <a
+              href="https://github.com/amadolid/pybotchi/tree/master/examples"
+              class="btn btn-primary"
+              target="_blank"
+            >
+              Browse All Examples on GitHub
+            </a>
           </div>
         </section>
       </main>
@@ -2224,6 +2902,8 @@ ruff check .</code></pre>
         const targetSection = document.getElementById(targetId);
         if (targetSection) {
           targetSection.classList.add("active");
+        } else {
+          document.getElementById("wip").classList.add("active");
         }
 
         const activeLink = document.querySelector(`a[href="#${targetId}"]`);

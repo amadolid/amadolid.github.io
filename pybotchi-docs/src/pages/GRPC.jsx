@@ -35,17 +35,16 @@ class MathProblem(Action):
 
     equation: str = Field(description="The mathematical equation to solve (e.g., '2x + 5')")
 
-    async def pre(self, context: GRPCContext) -> ActionReturn:
+    async def pre(self, context: GRPCContext) -> None:
         """Execute pre process."""
         message = await context.llm.ainvoke(f"Solve \`{self.equation}\`")
-        await context.add_usage(self, context.llm.model_name, message.usage_metadata)
+        await context.add_usage(self, context.llm.model, message.usage_metadata)
         await context.add_message(
             ChatRole.ASSISTANT,
             "Adding additional message",
             metadata={"additional": True},
         )
         await context.add_response(self, message.text)
-        return ActionReturn.GO
 
 
 class Translation(Action):
@@ -56,12 +55,11 @@ class Translation(Action):
     message: str = Field(description="The text content to be translated.")
     language: str = Field(description="The ISO code or name of the target language.")
 
-    async def pre(self, context: GRPCContext) -> ActionReturn:
+    async def pre(self, context: GRPCContext) -> None:
         """Execute pre process."""
         message = await context.llm.ainvoke(f"Translate \`{self.message}\` to {self.language}")
-        await context.add_usage(self, context.llm.model_name, message.usage_metadata)
+        await context.add_usage(self, context.llm.model, message.usage_metadata)
         await context.add_response(self, message.text)
-        return ActionReturn.GO
 
 
 # Example nested gRPC Action - exposed at group-1 and connected to group-2
@@ -74,9 +72,9 @@ class JokeWithStoryTelling(GRPCAction):
     async def post(self, context: GRPCContext) -> ActionReturn:
         """Execute post process."""
         message = await context.llm.ainvoke(context.prompts)
-        await context.add_usage(self, context.llm.model_name, message.usage_metadata, "combine")
+        await context.add_usage(self, context.llm.model, message.usage_metadata, "combine")
         await context.add_message(ChatRole.ASSISTANT, message.text)
-        return ActionReturn.END
+        return ActionReturn.STOP
 
 
 class Joke(Action):
@@ -85,12 +83,11 @@ class Joke(Action):
     __concurrent__ = True
     __groups__ = {"grpc": {"group-2"}}
 
-    async def pre(self, context: GRPCContext) -> ActionReturn:
+    async def pre(self, context: GRPCContext) -> None:
         """Execute pre process."""
         message = await context.llm.ainvoke("generate very short joke")
-        await context.add_usage(self, context.llm.model_name, message.usage_metadata)
+        await context.add_usage(self, context.llm.model, message.usage_metadata)
         await context.add_response(self, message.text)
-        return ActionReturn.GO
 
 
 class StoryTelling(Action):
@@ -99,12 +96,11 @@ class StoryTelling(Action):
     __concurrent__ = True
     __groups__ = {"grpc": {"group-2"}}
 
-    async def pre(self, context: GRPCContext) -> ActionReturn:
+    async def pre(self, context: GRPCContext) -> None:
         """Execute pre process."""
         message = await context.llm.ainvoke("generate a very short story")
-        await context.add_usage(self, context.llm.model_name, message.usage_metadata)
-        await context.add_response(self, message.text)
-        return ActionReturn.GO`;
+        await context.add_usage(self, context.llm.model, message.usage_metadata)
+        await context.add_response(self, message.text)`;
 
 const CLIENT_PY = `from asyncio import run
 from os import getenv
@@ -114,7 +110,7 @@ from dotenv import load_dotenv
 
 from langchain_openai import AzureChatOpenAI
 
-from pybotchi import Action, ActionReturn, ChatRole, LLM
+from pybotchi import Action, ActionResult, ActionReturn, ChatRole, LLM
 from pybotchi.grpc import (
     GRPCAction,
     GRPCConnection,
@@ -144,16 +140,15 @@ class GeneralChat(GRPCAction):
 
     __grpc_connections__ = [GRPCConnection("testing", "localhost:50051", ["group-1"])]
 
-    async def pre_grpc(self, context: GRPCContext) -> ActionReturn:
+    async def pre_grpc(self, context: GRPCContext) -> None:
         """Execute pre grpc execution."""
         print("Trigger anything here before grpc client connection")
         print("Build context.integrations['testing']['config']")
         print("Refresh tokens")
         print("etc ...")
-        return ActionReturn.GO
 
     class MathProblem(GRPCRemoteAction):
-        async def pre(self, context: GRPCContext) -> ActionReturn:
+        async def pre(self, context: GRPCContext) -> ActionResult:
             """Execute pre execution."""
             print("#####################################")
             return await super().pre(context)
@@ -163,10 +158,9 @@ class GeneralChat(GRPCAction):
 
         __concurrent__ = True
 
-        async def pre(self, context: GRPCContext) -> ActionReturn:
+        async def pre(self, context: GRPCContext) -> None:
             """Execute pre execution."""
             await context.add_response(self, "Validated!")
-            return ActionReturn.GO
 
 
 async def test() -> None:
@@ -386,7 +380,7 @@ class ed0,ed1,ed2 animate`;
 export default function GRPC() {
   return (
     <>
-      <h2>gRPC (Scaling)</h2>
+      <h2 id="distributed-agents">gRPC (Scaling)</h2>
       <p>
         PyBotchi&apos;s <strong>gRPC support</strong> enables{" "}
         <em>true distributed scaling</em> by allowing a PyBotchi client to
@@ -470,11 +464,10 @@ class MathProblem(Action):
 
     equation: str = Field(description="The mathematical equation to solve (e.g., '2x + 5')")
 
-    async def pre(self, context: GRPCContext) -> ActionReturn:
+    async def pre(self, context: GRPCContext) -> None:
         """Execute pre process."""
         message = await context.llm.ainvoke(f"Solve \`{self.equation}\`")
-        await context.add_response(self, message.text)
-        return ActionReturn.GO`}</CodeBlock>
+        await context.add_response(self, message.text)`}</CodeBlock>
 
       <h4>Via Local Action Override</h4>
       <CodeBlock language="python">{`from pybotchi.grpc import GRPCAction, GRPCConnection, GRPCRemoteAction

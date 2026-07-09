@@ -47,6 +47,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const mainRef = useRef(null)
+  const targetSectionRef = useRef(null)
 
   useEffect(() => {
     const handler = () => setActive(getHash())
@@ -55,7 +56,19 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (mainRef.current) mainRef.current.scrollTo(0, 0)
+    const section = targetSectionRef.current
+    targetSectionRef.current = null
+    if (section) {
+      const el = mainRef.current?.querySelector(`[id="${section}"]`)
+      if (el) {
+        const top = el.getBoundingClientRect().top + window.scrollY - 80
+        window.scrollTo({ top: Math.max(0, top), behavior: 'instant' })
+      } else {
+        window.scrollTo(0, 0)
+      }
+    } else {
+      window.scrollTo(0, 0)
+    }
   }, [active])
 
   useEffect(() => {
@@ -69,7 +82,8 @@ export default function App() {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
-  const navigate = (id) => {
+  const navigate = (id, section = null) => {
+    targetSectionRef.current = section
     setActive(id)
     history.pushState(null, '', `#${id}`)
     setSidebarOpen(false)

@@ -4,7 +4,7 @@ import Note from '../components/Note'
 export default function Installation() {
   return (
     <>
-      <h2>Installation</h2>
+      <h2 id="pip-install">Installation</h2>
       <p>PyBotchi requires Python 3.12 or higher. Install using pip:</p>
 
       <CodeBlock language="bash">pip install pybotchi</CodeBlock>

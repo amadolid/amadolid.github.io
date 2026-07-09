@@ -36,12 +36,11 @@ class MathProblem(Action):
 
     equation: str = Field(description="The mathematical equation to solve (e.g., '2x + 5')")
 
-    async def pre(self, context: Context) -> ActionReturn:
+    async def pre(self, context: Context) -> None:
         """Execute pre process."""
         message = await context.llm.ainvoke(f"Solve \`{self.equation}\`")
-        await context.add_usage(self, context.llm.model_name, message.usage_metadata)
+        await context.add_usage(self, context.llm.model, message.usage_metadata)
         await context.add_response(self, message.text)
-        return ActionReturn.GO
 
 
 class Translation(Action):
@@ -52,12 +51,11 @@ class Translation(Action):
     message: str = Field(description="The text content to be translated.")
     language: str = Field(description="The ISO code or name of the target language.")
 
-    async def pre(self, context: Context) -> ActionReturn:
+    async def pre(self, context: Context) -> None:
         """Execute pre process."""
         message = await context.llm.ainvoke(f"Translate \`{self.message}\` to {self.language}")
-        await context.add_usage(self, context.llm.model_name, message.usage_metadata)
+        await context.add_usage(self, context.llm.model, message.usage_metadata)
         await context.add_response(self, message.text)
-        return ActionReturn.GO
 
 
 class JokeWithStoryTelling(Action):
@@ -67,41 +65,38 @@ class JokeWithStoryTelling(Action):
 
     query: str
 
-    async def pre(self, context: Context) -> ActionReturn:
+    async def pre(self, context: Context) -> None:
         """Execute pre process."""
         await context.add_message(ChatRole.USER, self.query)
-        return ActionReturn.GO
 
     class Joke(Action):
         """Generate a joke."""
 
         __concurrent__ = True
 
-        async def pre(self, context: Context) -> ActionReturn:
+        async def pre(self, context: Context) -> None:
             """Execute pre process."""
             message = await context.llm.ainvoke("generate very short joke")
-            await context.add_usage(self, context.llm.model_name, message.usage_metadata)
+            await context.add_usage(self, context.llm.model, message.usage_metadata)
             await context.add_response(self, message.text)
-            return ActionReturn.GO
 
     class StoryTelling(Action):
         """Tell a story."""
 
         __concurrent__ = True
 
-        async def pre(self, context: Context) -> ActionReturn:
+        async def pre(self, context: Context) -> None:
             """Execute pre process."""
             message = await context.llm.ainvoke("generate a very short story")
-            await context.add_usage(self, context.llm.model_name, message.usage_metadata)
+            await context.add_usage(self, context.llm.model, message.usage_metadata)
             await context.add_response(self, message.text)
-            return ActionReturn.GO
 
     async def post(self, context: Context) -> ActionReturn:
         """Execute post process."""
         message = await context.llm.ainvoke(context.prompts)
-        await context.add_usage(self, context.llm.model_name, message.usage_metadata, "combine")
+        await context.add_usage(self, context.llm.model, message.usage_metadata, "combine")
         await context.add_message(ChatRole.ASSISTANT, message.text)
-        return ActionReturn.END
+        return ActionReturn.STOP
 
 
 # SSE paths /group-1/sse & /group-2/sse
@@ -167,12 +162,11 @@ class GeneralChat(MCPAction):
 
     __mcp_connections__ = [MCPConnection("testing", "SHTTP", "http://localhost:8000/group-1/mcp")]
 
-    async def pre_mcp(self, context: MCPContext) -> ActionReturn:
+    async def pre_mcp(self, context: MCPContext) -> None:
         """Execute pre mcp execution."""
         print("Trigger anything here before mcp client connection")
         print("Build context.integrations['testing']['config']")
         print("Refresh tokens")
-        return ActionReturn.GO
 
 
 async def test() -> None:
@@ -207,7 +201,7 @@ const CLAUDE_DESKTOP = `{
 export default function MCP() {
   return (
     <>
-      <h2>MCP (Model Context Protocol)</h2>
+      <h2 id="model-context-protocol">MCP (Model Context Protocol)</h2>
       <p>
         PyBotchi&apos;s <strong>MCP support</strong> enables seamless integration with the{' '}
         <strong>Model Context Protocol</strong>, allowing your Actions to function as MCP servers

@@ -20,8 +20,8 @@ export default function SearchModal({ onClose, onNavigate }) {
 
   useEffect(() => { setSelected(0) }, [query])
 
-  const go = (page) => {
-    onNavigate(page)
+  const go = (page, sectionId) => {
+    onNavigate(page, sectionId)
     onClose()
   }
 
@@ -33,7 +33,7 @@ export default function SearchModal({ onClose, onNavigate }) {
       e.preventDefault()
       setSelected(s => Math.max(s - 1, 0))
     } else if (e.key === 'Enter' && results[selected]) {
-      go(results[selected].page)
+      go(results[selected].page, results[selected].sectionId)
     } else if (e.key === 'Escape') {
       onClose()
     }
@@ -60,7 +60,7 @@ export default function SearchModal({ onClose, onNavigate }) {
               <li key={i}>
                 <button
                   className={`search-result-item${i === selected ? ' selected' : ''}`}
-                  onClick={() => go(item.page)}
+                  onClick={() => go(item.page, item.sectionId)}
                   onMouseEnter={() => setSelected(i)}
                 >
                   <span className="result-page">{item.title}</span>

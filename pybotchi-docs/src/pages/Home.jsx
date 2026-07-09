@@ -87,7 +87,7 @@ export default function Home({ onNavigate }) {
 
   return (
     <>
-      <div className="hero">
+      <div className="hero" id="overview">
         <h1>PyBotchi</h1>
         <p className="subtitle">Build scalable AI agent systems with ease</p>
         <p>

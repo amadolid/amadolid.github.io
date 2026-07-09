@@ -13,7 +13,7 @@ export default function Contributing() {
         </p>
       </div>
 
-      <h3>🚀 Development Setup</h3>
+      <h3 id="development-setup">🚀 Development Setup</h3>
 
       <div className="setup-steps">
         <div className="setup-step">
@@ -69,7 +69,7 @@ ruff check --fix .
 ruff format .
 mypy pybotchi`}</CodeBlock>
 
-      <h3>📝 Code Style</h3>
+      <h3 id="code-style">📝 Code Style</h3>
       <div className="style-guidelines">
         <ul>
           <li><strong>Line length:</strong> 120 characters max</li>
@@ -91,9 +91,8 @@ class ExampleAction(Action):
 
     field_name: str = Field(description="Field description")
 
-    async def pre(self, context: Context) -> ActionReturn:
-        """Execute pre-processing logic before child actions."""
-        return ActionReturn.GO`}</CodeBlock>
+    async def pre(self, context: Context) -> None:
+        """Execute pre-processing logic before child actions."""`}</CodeBlock>
 
       <h3>💬 Commit Messages</h3>
       <p>Use clear, descriptive commit messages with capitalized type prefixes:</p>
@@ -131,7 +130,7 @@ class ExampleAction(Action):
 [DOCS]: Update installation instructions
 [MAJOR]: Refactor Action lifecycle hooks`}</CodeBlock>
 
-      <h3>🔄 Pull Request Process</h3>
+      <h3 id="pull-requests">🔄 Pull Request Process</h3>
 
       <div className="pr-steps">
         <div className="pr-step">
@@ -220,8 +219,8 @@ git rebase origin/main`}</CodeBlock>
       <div className="highlight-box">
         <h3>📄 License</h3>
         <p>
-          By contributing, you agree that your contributions will be licensed under the MIT
-          License.
+          By contributing, you agree that your contributions will be licensed under the Apache
+          License 2.0.
         </p>
       </div>
 

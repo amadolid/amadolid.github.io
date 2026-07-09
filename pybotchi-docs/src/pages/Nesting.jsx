@@ -29,20 +29,18 @@ class GeneralChat(Action):
 
         answer: str = Field(description="Your mathematical answer")
 
-        async def pre(self, context: Context) -> ActionReturn:
+        async def pre(self, context: Context) -> None:
             await context.add_response(self, self.answer)
-            return ActionReturn.GO
 
     class Translation(Action):
         """Translate to a different language."""
 
-        async def pre(self, context: Context) -> ActionReturn:
+        async def pre(self, context: Context) -> None:
             message = await context.llm.ainvoke(context.prompts)
             await context.add_usage(self, context.llm.model_name, message.usage_metadata)
-            await context.add_response(self, message.text)
-            return ActionReturn.GO`}</CodeBlock>
+            await context.add_response(self, message.text)`}</CodeBlock>
 
-      <h3>Deep Hierarchies</h3>
+      <h3 id="deep-hierarchies">Deep Hierarchies</h3>
       <p>
         Children can themselves have children, forming multi-level trees. Each level gets its own
         LLM tool-call, progressively narrowing the task.
@@ -184,18 +182,16 @@ class GeneralChat(Action):
 
         answer: str = Field(description="Your mathematical answer")
 
-        async def pre(self, context: Context) -> ActionReturn:
+        async def pre(self, context: Context) -> None:
             await context.add_response(self, self.answer)
-            return ActionReturn.GO
 
     class Translation(Action):
         """Translate to a different language."""
 
-        async def pre(self, context: Context) -> ActionReturn:
+        async def pre(self, context: Context) -> None:
             message = await context.llm.ainvoke(context.prompts)
             await context.add_usage(self, context.llm.model_name, message.usage_metadata)
-            await context.add_response(self, message.text)
-            return ActionReturn.GO`}</CodeBlock>
+            await context.add_response(self, message.text)`}</CodeBlock>
 
       <div className="highlight-box">
         <h3>How Child Discovery Works</h3>

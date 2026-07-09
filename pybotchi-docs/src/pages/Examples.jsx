@@ -2,6 +2,7 @@ const BASE = 'https://github.com/amadolid/pybotchi/blob/master/examples'
 
 const CATEGORIES = [
   {
+    id: 'getting-started',
     title: '🚀 Getting Started',
     desc: 'Start here if you\'re new to PyBotchi. These examples demonstrate the core concepts with minimal code, perfect for understanding the fundamentals.',
     examples: [
@@ -10,6 +11,7 @@ const CATEGORIES = [
     ],
   },
   {
+    id: 'execution-patterns',
     title: '🔄 Execution Patterns',
     desc: 'Learn how to control execution flow in your agent systems. Master sequential processing, nested workflows, and complex orchestration patterns.',
     examples: [
@@ -18,6 +20,7 @@ const CATEGORIES = [
     ],
   },
   {
+    id: 'parallel-processing',
     title: '⚡ Parallel Processing',
     desc: 'Maximize performance with concurrent execution. These examples show how to run multiple actions simultaneously using async patterns and multi-threading.',
     examples: [
@@ -26,6 +29,7 @@ const CATEGORIES = [
     ],
   },
   {
+    id: 'grpc',
     title: '🌐 Distributed Systems',
     desc: 'Scale your agents across multiple servers with gRPC. Deploy compute-intensive actions remotely while maintaining unified orchestration.',
     examples: [
@@ -34,6 +38,7 @@ const CATEGORIES = [
     ],
   },
   {
+    id: 'mcp-protocol',
     title: '🔌 MCP Protocol',
     desc: 'Integrate with the Model Context Protocol ecosystem. Expose your agents as MCP tools or consume external MCP servers within your workflows.',
     examples: [
@@ -43,6 +48,7 @@ const CATEGORIES = [
     ],
   },
   {
+    id: 'production-use-cases',
     title: '💼 Production Use Cases',
     desc: 'Real-world applications demonstrating PyBotchi in production scenarios with advanced patterns like WebSocket communication and streaming responses.',
     examples: [
@@ -50,6 +56,7 @@ const CATEGORIES = [
     ],
   },
   {
+    id: 'framework-comparisons',
     title: '⚖️ Framework Comparisons',
     desc: 'See how PyBotchi compares to other agent frameworks. Same problem, different approaches—compare code clarity, flexibility, and implementation complexity.',
     examples: [
@@ -70,8 +77,8 @@ export default function Examples() {
       </p>
 
       <div className="examples-grid">
-        {CATEGORIES.map(({ title, desc, examples }) => (
-          <div className="example-category" key={title}>
+        {CATEGORIES.map(({ id, title, desc, examples }) => (
+          <div className="example-category" id={id} key={title}>
             <h3>{title}</h3>
             <p className="category-description">{desc}</p>
             <ul className="example-list">

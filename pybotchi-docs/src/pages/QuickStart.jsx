@@ -4,7 +4,7 @@ import Note from '../components/Note'
 export default function QuickStart() {
   return (
     <>
-      <h2>Quick Start</h2>
+      <h2 id="your-first-agent">Quick Start</h2>
       <p>
         Get up and running with PyBotchi in minutes. Here&apos;s a simple example to create your
         first agent:
@@ -61,7 +61,7 @@ class GeneralChat(Action):
         async def pre(self, context: Context) -> ActionReturn:
             """Execute pre process."""
             await context.add_response(self, self.answer)
-            return ActionReturn.GO
+            return None
 
 
     class Translate(Action):
@@ -72,7 +72,7 @@ class GeneralChat(Action):
         async def pre(self, context: Context) -> ActionReturn:
             """Execute pre process."""
             await context.add_response(self, self.translation)
-            return ActionReturn.GO`}</CodeBlock>
+            return None`}</CodeBlock>
 
       <h3>Initialize your context</h3>
       <Note>

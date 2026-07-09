@@ -12,7 +12,7 @@ export default function Runtime() {
         and all four loop approaches.
       </p>
 
-      <h3>add_child / remove_child</h3>
+      <h3 id="add_child-remove_child">add_child / remove_child</h3>
       <p>
         Both <code>add_child</code> and <code>remove_child</code> are class-level methods. They
         mutate the action&apos;s child list permanently (for the lifetime of the process), so they
@@ -48,9 +48,9 @@ Router.remove_child(SummaryTool)`}</CodeBlock>
         multiple names, or when creating circular references.
       </Note>
 
-      <h3>Iteration Pattern</h3>
+      <h3 id="iteration-pattern">Iteration Pattern</h3>
       <p>
-        The simplest loop: set <code>__max_child_iteration__</code> to allow the parent to cycle
+        The simplest loop: set <code>__max_iteration__</code> to allow the parent to cycle
         through child selection multiple times. A <code>fallback</code> returning{' '}
         <code>ActionReturn.BREAK</code> stops the loop early when the LLM signals it is done.
       </p>
@@ -60,31 +60,29 @@ Router.remove_child(SummaryTool)`}</CodeBlock>
 class WeatherAgent(Action):
     """Get weather and synthesize a response."""
 
-    __max_child_iteration__ = 5  # allow up to 5 tool-selection rounds
+    __max_iteration__ = 5  # allow up to 5 tool-selection rounds
 
     async def fallback(self, context: Context, content: str) -> ActionReturn:
         """LLM replied without a tool call — we're done."""
         await context.add_message(ChatRole.ASSISTANT, content)
-        return ActionReturn.END  # or ActionReturn.BREAK to stop the loop
+        return ActionReturn.BREAK  # break the iteration loop
 
     class Weather(Action):
         """Get the current weather for a location."""
 
         location: str
 
-        async def pre(self, context: Context) -> ActionReturn:
+        async def pre(self, context: Context) -> None:
             if self.location.lower() == "yorkshire":
                 await context.add_response(self, "It's cold and wet.")
             else:
-                await context.add_response(self, "It's warm and sunny.")
-            return ActionReturn.GO`}</CodeBlock>
+                await context.add_response(self, "It's warm and sunny.")`}</CodeBlock>
 
-      <h3>Direct Circular Pattern</h3>
+      <h3 id="circular-actions">Direct Circular Pattern</h3>
       <p>
         Wire a child action back to its parent (or any ancestor) using <code>add_child</code> with
-        a <code>"DefaultAction"</code> alias. When the child finishes and returns{' '}
-        <code>ActionReturn.GO</code>, it triggers a new tool-call on the aliased parent, creating
-        a loop until <code>fallback</code> fires.
+        a <code>"DefaultAction"</code> alias. When the child finishes (returning <code>None</code>),
+        it triggers a new tool-call on the aliased parent, creating a loop until <code>fallback</code> fires.
       </p>
       <CodeBlock language="python">{`from pybotchi import Action, ActionReturn, ChatRole, Context
 
@@ -94,23 +92,22 @@ class WeatherAgent(Action):
 
     async def fallback(self, context: Context, content: str) -> ActionReturn:
         await context.add_message(ChatRole.ASSISTANT, content)
-        return ActionReturn.END
+        return ActionReturn.STOP
 
     class Weather(Action):
         """Get the current weather for a location."""
 
         location: str
 
-        async def pre(self, context: Context) -> ActionReturn:
+        async def pre(self, context: Context) -> None:
             if self.location.lower() == "yorkshire":
                 await context.add_response(self, "It's cold and wet.")
             else:
                 await context.add_response(self, "It's warm and sunny.")
-            return ActionReturn.GO
 
 
 # Wire Weather → WeatherAgent under the alias "DefaultAction"
-# When Weather.pre() returns GO, WeatherAgent is selected next
+# When Weather.pre() returns None, WeatherAgent is selected next
 WeatherAgent.Weather.add_child(WeatherAgent, "DefaultAction")`}</CodeBlock>
 
       <h3>Indirect Circular Pattern</h3>
@@ -119,7 +116,7 @@ WeatherAgent.Weather.add_child(WeatherAgent, "DefaultAction")`}</CodeBlock>
         hook. This creates an indirect recursive loop that is fully controlled by your code rather
         than the tool-call mechanism.
       </p>
-      <CodeBlock language="python">{`from pybotchi import Action, ActionReturn, Context
+      <CodeBlock language="python">{`from pybotchi import Action, ActionResult, ActionReturn, Context
 
 
 class WeatherAgent(Action):
@@ -127,14 +124,14 @@ class WeatherAgent(Action):
 
     async def fallback(self, context: Context, content: str) -> ActionReturn:
         await context.add_message(ChatRole.ASSISTANT, content)
-        return ActionReturn.END
+        return ActionReturn.STOP
 
     class Weather(Action):
         """Get the current weather for a location."""
 
         location: str
 
-        async def pre(self, context: Context) -> ActionReturn:
+        async def pre(self, context: Context) -> ActionResult:
             if self.location.lower() == "yorkshire":
                 await context.add_response(self, "It's cold and wet.")
             else:
@@ -176,12 +173,12 @@ class WeatherAgent(Action):
 
         location: str
 
-        async def pre(self, context: Context) -> ActionReturn:
+        async def pre(self, context: Context) -> None:
             if self.location.lower() == "yorkshire":
                 await context.add_response(self, "It's cold and wet.")
             else:
                 await context.add_response(self, "It's warm and sunny.")
-            return ActionReturn.GO  # continues — triggers WeatherAgent again
+            # returns None — continues, triggers WeatherAgent again
 
 
 # Wire Weather back to WeatherAgent; DefaultAction handles final output
@@ -192,7 +189,7 @@ WeatherAgent.Weather.add_child(WeatherAgent, "DefaultAction")`}</CodeBlock>
         <ul>
           <li>
             <strong>Iteration</strong> — simplest; use when you need a bounded loop with
-            a clear max step count (<code>__max_child_iteration__</code>).
+            a clear max step count (<code>__max_iteration__</code>).
           </li>
           <li>
             <strong>Direct circular</strong> — clean; use when you want the tool-call mechanism

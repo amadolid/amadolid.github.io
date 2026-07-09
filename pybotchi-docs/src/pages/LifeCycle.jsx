@@ -14,7 +14,41 @@ export default function LifeCycle() {
       </p>
 
       <div className="lifecycle-hook-section">
-        <h3>pre</h3>
+        <h3>ActionResult — Flow Control</h3>
+        <p>
+          Every lifecycle method returns <code>ActionResult</code>, which is{' '}
+          <code>ActionReturn | None</code>. The value controls what happens next:
+        </p>
+        <CodeBlock language="python">{`from pybotchi import ActionResult, ActionReturn
+
+# None (or omit return) — continue normally, nothing is interrupted
+return None
+
+# ActionReturn.END — stop only this action's remaining lifecycle.
+# Sibling actions at the same level continue running unaffected.
+return ActionReturn.END
+
+# ActionReturn.BREAK — stop this action AND break the nearest ancestor's
+# iteration loop (__max_iteration__). Stops subsequent siblings too.
+return ActionReturn.BREAK
+
+# ActionReturn.STOP — stop the entire agent immediately.
+# Propagates all the way up through every ancestor.
+return ActionReturn.STOP
+
+# ActionReturn.stop(value=...) — same as STOP but carries a return value
+# accessible after context.start() completes.
+return ActionReturn.stop(value="any_value_of_any_type")`}</CodeBlock>
+        <p>
+          <code>ActionReturn.END</code>, <code>ActionReturn.BREAK</code>, and{' '}
+          <code>ActionReturn.STOP</code> are pre-instantiated singletons — use them directly
+          without calling a constructor. Only <code>ActionReturn.stop(value=...)</code> is a
+          factory method (for when you need to attach a return value).
+        </p>
+      </div>
+
+      <div className="lifecycle-hook-section">
+        <h3 id="pre">pre</h3>
         <p>Executes before child agents run, allowing preparation, validation, and data gathering.</p>
         <ul>
           <li>Guardrails and validation before execution</li>
@@ -24,7 +58,7 @@ export default function LifeCycle() {
         </ul>
         <CodeBlock language="python">{`from itertools import islice
 
-from pybotchi import Action, ActionReturn, Context
+from pybotchi import Action, ActionResult, ActionReturn, Context
 
 from pydantic import Field
 
@@ -33,7 +67,7 @@ class Translate(Action):
 
     language: str = Field(description="Target language.")
 
-    async def pre(self, context: Context) -> ActionReturn:
+    async def pre(self, context: Context) -> ActionResult:
         """Execute pre process."""
         # use base llm instance to invoke completion base on your requirements
         message = await context.llm.ainvoke(
@@ -57,14 +91,14 @@ class Translate(Action):
         # You may do guardrails before executing any commands
         # No restriction at all
 
-        return ActionReturn.GO
-
-        # You can return ActionReturn.END if there's another agent or child to be executed and you already want to stop the workflow
-        # You can return ActionReturn.BREAK if it's part of iteration agent and you only need to break the loop and continue on next execution`}</CodeBlock>
+        # Return None (or omit return) to continue normally
+        # Return ActionReturn.END to stop only this action (siblings continue)
+        # Return ActionReturn.BREAK to break the nearest ancestor iteration loop
+        # Return ActionReturn.STOP to stop the entire agent`}</CodeBlock>
       </div>
 
       <div className="lifecycle-hook-section">
-        <h3>post</h3>
+        <h3 id="post">post</h3>
         <p>Executes after child agents complete, handling result consolidation and cleanup.</p>
         <ul>
           <li>Consolidate results from child agent executions</li>
@@ -81,7 +115,7 @@ class GeneratePresentation(Action):
     # your pre execution method ...
     # your child actions ...
 
-    async def post(self, context: Context) -> ActionReturn:
+    async def post(self, context: Context) -> None:
         """Execute post process."""
         message = await context.llm.ainvoke(
             [
@@ -95,13 +129,11 @@ class GeneratePresentation(Action):
         await context.add_response(self, message.text)
 
         # All process here are optional and overridable
-        # Save data to db, Do cleanups, No restriction at all
-
-        return ActionReturn.GO`}</CodeBlock>
+        # Save data to db, Do cleanups, No restriction at all`}</CodeBlock>
       </div>
 
       <div className="lifecycle-hook-section">
-        <h3>on_error</h3>
+        <h3 id="on_error">on_error</h3>
         <p>Handles errors during execution with retry logic or custom error handling.</p>
         <ul>
           <li>Error handling and retry mechanisms</li>
@@ -117,7 +149,7 @@ class GeneratePresentation(Action):
     # your pre execution method ...
     # your child actions ...
 
-    async def on_error(self, context: Context, exception: Exception) -> ActionReturn:
+    async def on_error(self, context: Context, exception: Exception, unwrapped_exceptions) -> ActionReturn:
         """Execute on error process."""
         # Consume exception Here
         # Check for type or attributes then execute their respective full back process
@@ -131,15 +163,15 @@ class GeneratePresentation(Action):
                 print("Request timed out")
                 fallback2()
             case _:
-                print(f"Unexpected error: {type(e).__name__}: {e}")
+                print(f"Unexpected error: {type(exception).__name__}: {exception}")
                 fallback3()
 
         # Optional re-raise
-        raise e`}</CodeBlock>
+        raise exception`}</CodeBlock>
       </div>
 
       <div className="lifecycle-hook-section">
-        <h3>fallback</h3>
+        <h3 id="fallback">fallback</h3>
         <p>Executes when no child agent is selected, handling non-tool-call results.</p>
         <ul>
           <li>Process text content results from tool calls</li>
@@ -155,7 +187,7 @@ class GeneratePresentation(Action):
     # your pre execution method ...
     # your child actions ...
 
-    async def fallback(self, context: Context, content: str) -> ActionReturn:
+    async def fallback(self, context: Context, content: str) -> ActionResult:
         """Execute fallback process."""
         # You can just add the content as response
         await context.add_response(self, content)
@@ -163,14 +195,13 @@ class GeneratePresentation(Action):
         # or
         # await context.add_message(ChatRole.ASSISTANT, content)
 
-        return ActionReturn.GO
-
-        # or
-        # return ActionReturn.END`}</CodeBlock>
+        # Return None to continue normally
+        # Return ActionReturn.BREAK to break the nearest ancestor iteration loop
+        # Return ActionReturn.STOP to stop the entire agent`}</CodeBlock>
       </div>
 
       <div className="lifecycle-hook-section">
-        <h3>child_selection</h3>
+        <h3 id="child_selection">child_selection</h3>
         <p>Determines which child agents to execute, can be overridden with custom logic.</p>
         <ul>
           <li>Override with traditional control flow (if/else, switch/case)</li>
@@ -213,7 +244,7 @@ class GeneratePresentation(Action):
       </div>
 
       <div className="lifecycle-hook-section">
-        <h3>commit_context</h3>
+        <h3 id="commit_context">commit_context</h3>
         <p>The final lifecycle event that controls context merging with the main execution context.</p>
         <ul>
           <li>Detach and clone current context for isolated execution</li>
@@ -226,7 +257,7 @@ class GeneratePresentation(Action):
     """Generate presentation based on user's query."""
 
     # optional attribute to enable iteration
-    __max_child_iteration__ = 5
+    __max_iteration__ = 5
 
     # your attributes ...
 
@@ -242,7 +273,7 @@ class GeneratePresentation(Action):
       <h2>Extended Life Cycle Hooks</h2>
 
       <div className="lifecycle-hook-section">
-        <h3>pre_mcp</h3>
+        <h3 id="pre_mcp">pre_mcp</h3>
         <p>
           Executes before MCP server connection for <code>MCPAction</code> agents only.
         </p>
@@ -264,7 +295,7 @@ class JiraRequestAction(MCPAction):
 
     # your attributes ...
 
-    async def pre_mcp(self, context: MCPContext) -> ActionReturn:
+    async def pre_mcp(self, context: MCPContext) -> None:
         """Execute pre process."""
         if not (integration := context.integrations.get("jira")):
             raise NotImplementedError("Feature not yet implemented!")
@@ -278,13 +309,11 @@ class JiraRequestAction(MCPAction):
         integration["allowed_tools"] = {
             "Action1",
             "Action2",
-        }
-
-        return ActionReturn.GO`}</CodeBlock>
+        }`}</CodeBlock>
       </div>
 
       <div className="lifecycle-hook-section">
-        <h3>pre_grpc</h3>
+        <h3 id="pre_grpc">pre_grpc</h3>
         <p>
           Executes before GRPC server connection for <code>GRPCAction</code> agents only.
         </p>
@@ -300,11 +329,11 @@ from pybotchi.grpc import GRPCAction, GRPCConnection, GRPCContext
 class GeneralChat(GRPCAction):
     """Casual Generic Chat."""
 
-    __grpc_connections__ = [GRPCConnection("testing", "localhost:50051", "group-1")]
+    __grpc_connections__ = [GRPCConnection("testing", "localhost:50051", ["group-1"])]
 
     # your attributes ...
 
-    async def pre_grpc(self, context: GRPCContext) -> ActionReturn:
+    async def pre_grpc(self, context: GRPCContext) -> None:
         """Execute pre grpc execution."""
         if not (integration := context.integrations.get("testing")):
             raise NotImplementedError("Feature not yet implemented!")
@@ -317,13 +346,11 @@ class GeneralChat(GRPCAction):
         integration["allowed_tools"] = {
             "Action1",
             "Action2",
-        }
-
-        return ActionReturn.GO`}</CodeBlock>
+        }`}</CodeBlock>
       </div>
 
       <div className="lifecycle-hook-section">
-        <h3>on_child_init_error</h3>
+        <h3 id="on_child_init_error">on_child_init_error</h3>
         <p>
           Executes when a child action fails to initialize — for example, when the LLM returns
           malformed tool-call arguments that fail Pydantic validation. This hook lets you record
@@ -344,7 +371,7 @@ from pybotchi import Action, ActionReturn, Context, uuid
 class GeneralChatWithCorrection(Action):
     """Runs with an iteration loop; handles bad tool arguments gracefully."""
 
-    __max_child_iteration__ = 4
+    __max_iteration__ = 4
     __first_tool_only__ = True
 
     class Print(Action):
@@ -352,9 +379,8 @@ class GeneralChatWithCorrection(Action):
 
         number: int  # LLM may initially send a string — triggers init error
 
-        async def pre(self, context: Context) -> ActionReturn:
+        async def pre(self, context: Context) -> None:
             await context.add_response(self, str(self.number))
-            return ActionReturn.GO
 
     async def on_child_init_error(
         self,

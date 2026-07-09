@@ -76,7 +76,7 @@ export default function HowItWorks() {
       </div>
 
       <div className="architecture-section">
-        <h2>The Action Lifecycle Architecture</h2>
+        <h2 id="architecture">The Action Lifecycle Architecture</h2>
 
         <div className="architecture-diagram">
           <img

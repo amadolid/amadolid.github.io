@@ -9,7 +9,7 @@ export default function ObjectOriented() {
         Customize your agent by utilizing <code>Object-Oriented Programming</code> practices
       </p>
 
-      <h3>Inheritance</h3>
+      <h3 id="inheritance">Inheritance</h3>
       <h4>Overrides &amp; Extensions</h4>
 
       <CodeBlock language="python">{`from typing import ClassVar

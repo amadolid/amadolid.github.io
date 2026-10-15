@@ -39,8 +39,8 @@ class SummaryTool(Action):
 Router.add_child(WeatherTool)
 Router.add_child(SummaryTool)
 
-# Remove a child if needed
-Router.remove_child(SummaryTool)`}</CodeBlock>
+# Remove a child if needed — remove_child takes the tool NAME (a string)
+Router.remove_child("SummaryTool")`}</CodeBlock>
 
       <Note>
         <strong>add_child</strong> accepts a class and an optional alias string that overrides the
@@ -54,7 +54,7 @@ Router.remove_child(SummaryTool)`}</CodeBlock>
         through child selection multiple times. A <code>fallback</code> returning{' '}
         <code>ActionReturn.BREAK</code> stops the loop early when the LLM signals it is done.
       </p>
-      <CodeBlock language="python">{`from pybotchi import Action, ActionReturn, Context
+      <CodeBlock language="python">{`from pybotchi import Action, ActionReturn, ChatRole, Context
 
 
 class WeatherAgent(Action):
@@ -116,7 +116,7 @@ WeatherAgent.Weather.add_child(WeatherAgent, "DefaultAction")`}</CodeBlock>
         hook. This creates an indirect recursive loop that is fully controlled by your code rather
         than the tool-call mechanism.
       </p>
-      <CodeBlock language="python">{`from pybotchi import Action, ActionResult, ActionReturn, Context
+      <CodeBlock language="python">{`from pybotchi import Action, ActionResult, ActionReturn, ChatRole, Context
 
 
 class WeatherAgent(Action):
@@ -151,7 +151,7 @@ class WeatherAgent(Action):
       <p>
         Declare an inner class named <code>DefaultAction</code> as a child. It acts as the
         termination step: when the LLM stops calling tools and falls back to this action, it
-        generates the final response and returns <code>ActionReturn.END</code>. Combine with
+        generates the final response and returns <code>ActionReturn.STOP</code>. Combine with
         <code>add_child</code> to wire in the loop.
       </p>
       <CodeBlock language="python">{`from pybotchi import Action, ActionReturn, ChatRole, Context
@@ -166,7 +166,7 @@ class WeatherAgent(Action):
         async def pre(self, context: Context) -> ActionReturn:
             message = await context.llm.ainvoke(context.prompts)
             await context.add_message(ChatRole.ASSISTANT, message.text)
-            return ActionReturn.END  # stops the loop
+            return ActionReturn.STOP  # stop the whole agent
 
     class Weather(Action):
         """Get the current weather for a location."""

@@ -105,11 +105,13 @@ class IterativeAnalyst(Action):
         <h3>__max_self_recursion__</h3>
         <p>
           Per-action self-recursion cap. Tracks how many times this specific action class has been
-          called within a single turn. Once the limit is reached,{' '}
-          <code>ActionReturn.STOP</code> is returned automatically, halting the entire agent. Use
-          this to guard against runaway recursive loops. The global equivalent on{' '}
-          <code>Context</code> is <code>max_self_recursion</code>, which applies to all actions
-          that do not set their own limit.
+          called within a single turn. Once the limit is reached, the{' '}
+          <code>on_max_self_recursion()</code> hook is invoked &mdash; which by default returns{' '}
+          <code>ActionReturn.STOP</code>, halting the entire agent. Override that hook to log, notify,
+          or return <code>None</code> to let execution continue past the cap. Use this to guard
+          against runaway recursive loops. The global equivalent on <code>Context</code> is{' '}
+          <code>max_self_recursion</code>, which applies to all actions that do not set their own
+          limit.
         </p>
         <CodeBlock language="python">{`from pybotchi import Action
 
@@ -153,9 +155,10 @@ class StepByStepAgent(Action):
       <div className="lifecycle-hook-section">
         <h3 id="__system_prompt__">__system_prompt__</h3>
         <p>
-          Overrides the system prompt used during the tool selection trigger for this action. If
-          not set, the current conversation&apos;s system prompt is used. This lets each action
-          specialise the LLM&apos;s persona for its own domain.
+          Overrides the system prompt used for this action&apos;s tool-selection prompt{' '}
+          <em>and</em> its finalization (<code>on_max_iteration</code>) prompt. If not set, the
+          current conversation&apos;s system prompt is used. This lets each action specialise the
+          LLM&apos;s persona for its own domain.
         </p>
         <CodeBlock language="python">{`from pybotchi import Action, ActionReturn, Context
 
@@ -163,7 +166,7 @@ class StepByStepAgent(Action):
 class CodeReviewAgent(Action):
     """Review code for quality and security issues."""
 
-    # This prompt is only active during tool selection for this action
+    # Used for this action's tool-selection AND finalization prompts
     __system_prompt__: str | None = """
 You are an expert code reviewer specializing in Python.
 Focus on security vulnerabilities, performance issues, and code quality.
@@ -208,9 +211,12 @@ class CreativeWriter(Action):
       <div className="lifecycle-hook-section">
         <h3 id="__default_tool__">__default_tool__</h3>
         <p>
-          Specifies the fallback action to use when the LLM does not select any declared child
-          action. Defaults to <code>DEFAULT_ACTION</code>, which is a sentinel string that maps to
-          an internal no-op. Set to a child action&apos;s name to route unmatched requests there.
+          The action name injected as <code>{'${default}'}</code> in the tool-call prompt — it is
+          suggested to the LLM as the default choice during child selection. Defaults to{' '}
+          <code>DEFAULT_ACTION</code> (the string <code>&quot;DefaultAction&quot;</code>,
+          configurable via the <code>DEFAULT_ACTION</code> env var). It only biases the prompt; it
+          performs no routing. The real &ldquo;no tool selected&rdquo; path is the{' '}
+          <code>fallback()</code> hook.
         </p>
         <CodeBlock language="python">{`from pybotchi import Action, ActionReturn, Context, DEFAULT_ACTION
 
@@ -218,11 +224,11 @@ class CreativeWriter(Action):
 class GeneralChat(Action):
     """Casual Generic Chat."""
 
-    # When no child is selected, use "DefaultAction" (the fallback)
-    __default_tool__: str = DEFAULT_ACTION  # default
+    # Name suggested to the LLM as the default choice in the tool-call prompt
+    __default_tool__: str = DEFAULT_ACTION  # default ("DefaultAction")
 
-    # Or override to route to a specific child:
-    # __default_tool__: str = "DefaultAction"
+    # Point it at a child so that child becomes the suggested default:
+    # __default_tool__: str = "AnswerQuestion"
 
     class AnswerQuestion(Action):
         """Answer a specific factual question."""
@@ -240,8 +246,9 @@ class GeneralChat(Action):
       <div className="lifecycle-hook-section">
         <h3 id="__agent__">__agent__</h3>
         <p>
-          Tags an action as an &ldquo;agent type&rdquo;. This attribute is reserved for future
-          use when PyBotchi adds support for custom agent implementations. It is{' '}
+          Tags an action as an &ldquo;agent type&rdquo;. When <code>True</code>, the class is
+          yielded by the <code>all_agents()</code> generator — used for discovery and
+          introspection. It has no effect on execution flow. It is{' '}
           <strong>not inheritable</strong> — subclasses always default back to{' '}
           <code>False</code> even if the parent sets it to <code>True</code>.
         </p>
@@ -264,8 +271,8 @@ class MySubAgent(MyAgent):
     ...`}</CodeBlock>
 
         <Note>
-          <strong>Note:</strong> This attribute is primarily a marker for tooling and introspection.
-          It does not change runtime behavior in the current version of PyBotchi.
+          <strong>Note:</strong> This attribute is a marker for tooling and introspection. It is
+          consumed today by <code>all_agents()</code> but has no effect on execution flow.
         </Note>
       </div>
 
@@ -282,7 +289,7 @@ class MySubAgent(MyAgent):
     __first_tool_only__: bool = False               # Only execute the first tool call
     __concurrent__: bool = False                    # Run this action concurrently (set on child)
     __max_iteration__: int | None = None            # Max child selection loop iterations
-    __max_self_recursion__: int | None = None       # Per-action self-call cap (auto-STOP on breach)
+    __max_self_recursion__: int | None = None       # Per-action self-call cap (calls on_max_self_recursion on breach)
     # ── not inheritable ──────────────────────────────────────────────────────
     __agent__: bool = False                         # Mark as agent type (no runtime effect)
     __display_name__: str                           # Human-friendly name for notify()/MCP

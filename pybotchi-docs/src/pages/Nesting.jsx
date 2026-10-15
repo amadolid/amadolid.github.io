@@ -37,7 +37,7 @@ class GeneralChat(Action):
 
         async def pre(self, context: Context) -> None:
             message = await context.llm.ainvoke(context.prompts)
-            await context.add_usage(self, context.llm.model_name, message.usage_metadata)
+            await context.add_usage(self, context.llm.model, message.usage_metadata)
             await context.add_response(self, message.text)`}</CodeBlock>
 
       <h3 id="deep-hierarchies">Deep Hierarchies</h3>
@@ -56,14 +56,14 @@ class Deep(Action):
 
         async def pre(self, context: Context) -> ActionReturn:
             await context.add_message(ChatRole.ASSISTANT, "Ha! That's funny.")
-            return ActionReturn.END
+            return ActionReturn.STOP
 
     class NotFunny(Action):
         """Use when the joke is not funny."""
 
         async def pre(self, context: Context) -> ActionReturn:
             await context.add_message(ChatRole.ASSISTANT, "I don't get it.")
-            return ActionReturn.END
+            return ActionReturn.STOP
 
 
 class GeneralChat(Action):
@@ -190,7 +190,7 @@ class GeneralChat(Action):
 
         async def pre(self, context: Context) -> None:
             message = await context.llm.ainvoke(context.prompts)
-            await context.add_usage(self, context.llm.model_name, message.usage_metadata)
+            await context.add_usage(self, context.llm.model, message.usage_metadata)
             await context.add_response(self, message.text)`}</CodeBlock>
 
       <div className="highlight-box">

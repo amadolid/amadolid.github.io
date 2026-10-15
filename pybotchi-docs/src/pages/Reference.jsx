@@ -19,6 +19,7 @@ export default function Reference() {
   └─ validates prompts[0] is system role
   └─ action.execute(context)
        └─ sets _parent, optionally detaches context, checks self-recursion
+            [on breach: on_max_self_recursion() → default STOP]
        └─ pre(context)
        └─ iteration loop (up to __max_iteration__ times):
             └─ execution(context)
@@ -127,8 +128,9 @@ export default function Reference() {
         <p>
           Per-class self-recursion limit. Takes priority over <code>context.max_self_recursion</code>.
           Checked in <code>check_self_recursion()</code> each time this action class is about
-          to execute. When the limit is exceeded, <code>ActionReturn.STOP</code> is returned
-          automatically.
+          to execute. When the limit is exceeded, the <code>on_max_self_recursion()</code> hook
+          is invoked &mdash; which by default returns <code>ActionReturn.STOP</code>. Override that
+          hook to run side effects or return <code>None</code> to keep going past the cap.
         </p>
       </div>
 
@@ -237,8 +239,8 @@ class Router(Action):
         </p>
         <p>
           Replaces the entire tool-selection system prompt template. Supports placeholders:{' '}
-          <code>{'${tool_choice}'}</code>, <code>{'${default}'}</code>,{' '}
-          <code>{'${system}'}</code>, <code>{'${addons}'}</code>. Falls back to{' '}
+          <code>{'${tool_choice}'}</code>, <code>{'${default}'}</code>, and{' '}
+          <code>{'${system}'}</code>. Falls back to{' '}
           <code>DEFAULT_TOOL_CALL_PROMPT</code> (overridable via env var).
         </p>
         <CodeBlock language="python">{`class MyAction(Action):
@@ -247,8 +249,6 @@ class Router(Action):
 
 Available tools: \${tool_choice}
 Default fallback: \${default}
-
-\${addons}
 """.strip()`}</CodeBlock>
       </div>
 
@@ -347,7 +347,7 @@ class AdminTool(Action):
 
       <div className="lifecycle-hook-section">
         <h3>pre</h3>
-        <CodeBlock language="python">{`async def pre(self, context: Context) -> ActionReturn:`}</CodeBlock>
+        <CodeBlock language="python">{`async def pre(self, context: Context) -> ActionResult:`}</CodeBlock>
         <p>
           Called first, before any child selection. Default: returns <code>None</code>.
           Use for input validation, data gathering (RAG), or setting up state. Return{' '}
@@ -362,7 +362,7 @@ class AdminTool(Action):
 
       <div className="lifecycle-hook-section">
         <h3>post</h3>
-        <CodeBlock language="python">{`async def post(self, context: Context) -> ActionReturn:`}</CodeBlock>
+        <CodeBlock language="python">{`async def post(self, context: Context) -> ActionResult:`}</CodeBlock>
         <p>
           Called after all children complete (after the iteration loop exits).
           Default: returns <code>None</code>. Use for consolidating results, cleanup, or final
@@ -372,7 +372,7 @@ class AdminTool(Action):
 
       <div className="lifecycle-hook-section">
         <h3>fallback</h3>
-        <CodeBlock language="python">{`async def fallback(self, context: Context, content: str) -> ActionReturn:`}</CodeBlock>
+        <CodeBlock language="python">{`async def fallback(self, context: Context, content: str) -> ActionResult:`}</CodeBlock>
         <p>
           Called when: (a) the LLM selected no tools, or (b) the action has zero children
           (in which case the LLM is auto-invoked first and the result is passed here).
@@ -435,8 +435,23 @@ class AdminTool(Action):
       </div>
 
       <div className="lifecycle-hook-section">
+        <h3>on_max_self_recursion</h3>
+        <CodeBlock language="python">{`async def on_max_self_recursion(self, context: Context) -> ActionResult:`}</CodeBlock>
+        <p>
+          Called from <code>check_self_recursion()</code> when this action class has been invoked
+          more times than <code>__max_self_recursion__</code> (or <code>context.max_self_recursion</code>)
+          allows within a single turn. <strong>Default: returns <code>ActionReturn.STOP</code></strong>,
+          halting the agent. Override to log/notify before stopping, or return <code>None</code> to
+          let execution continue past the cap.
+        </p>
+        <CodeBlock language="python">{`async def on_max_self_recursion(self, context: Context) -> ActionResult:
+    await context.notify({"event": "recursion-limit", "action": type(self).__name__})
+    return ActionReturn.STOP   # or return None to keep going`}</CodeBlock>
+      </div>
+
+      <div className="lifecycle-hook-section">
         <h3>on_max_iteration</h3>
-        <CodeBlock language="python">{`async def on_max_iteration(self, context: Context) -> ActionReturn:`}</CodeBlock>
+        <CodeBlock language="python">{`async def on_max_iteration(self, context: Context) -> ActionResult:`}</CodeBlock>
         <p>
           Called after <code>__max_iteration__</code> is exhausted without a BREAK or STOP.
           Default: invokes the LLM with <code>max_iteration_prompt()</code> and adds the response.
@@ -447,19 +462,19 @@ class AdminTool(Action):
 
       <div className="lifecycle-hook-section">
         <h3>commit_context</h3>
-        <CodeBlock language="python">{`async def commit_context(self, context: Context, child_context: Context) -> None:`}</CodeBlock>
+        <CodeBlock language="python">{`async def commit_context(self, parent: Context, child: Context) -> None:`}</CodeBlock>
         <p>
           Called in the <code>finally</code> block when <code>__detached__</code> is{' '}
           <code>True</code>. Default: merges <code>child_context</code> token usages into{' '}
           <code>context</code>. Override to selectively merge prompts, metadata, or other state
           from the isolated branch back into the parent context.
         </p>
-        <CodeBlock language="python">{`async def commit_context(self, context: Context, child_context: Context) -> None:
+        <CodeBlock language="python">{`async def commit_context(self, parent: Context, child: Context) -> None:
     # Only bring back messages added after the branch point
-    new_messages = child_context.prompts[len(context.prompts):]
-    context.prompts.extend(new_messages)
+    new_messages = child.prompts[len(parent.prompts):]
+    parent.prompts.extend(new_messages)
     # Merge usages from parent (always call this)
-    await super().commit_context(context, child_context)`}</CodeBlock>
+    await super().commit_context(parent, child)`}</CodeBlock>
       </div>
 
       <div className="lifecycle-hook-section">
@@ -700,11 +715,12 @@ action, result = await context.start(MyRootAction)`}</CodeBlock>
     self,
     ActionClass: type[Action],
     **kwargs: Any,
-) -> tuple[Context, Action, ActionReturn]:`}</CodeBlock>
+) -> tuple[Context, Action, ActionResult]:`}</CodeBlock>
         <p>
           Convenience: calls <code>detach_context()</code> then <code>start()</code>.
-          Returns <code>(child_context, action_instance, ActionReturn)</code>. Use to run an
-          action in isolation and inspect or merge the result manually.
+          Returns <code>(child_context, action_instance, ActionResult)</code> (the result may be{' '}
+          <code>None</code>). Use to run an action in isolation and inspect or merge the result
+          manually.
         </p>
         <CodeBlock language="python">{`child_ctx, action, result = await context.detached_start(SubWorkflow)
 # Inspect child_ctx.prompts, child_ctx.metadata before merging`}</CodeBlock>
@@ -712,7 +728,7 @@ action, result = await context.start(MyRootAction)`}</CodeBlock>
 
       <div className="lifecycle-hook-section">
         <h3>add_message</h3>
-        <CodeBlock language="python">{`async def add_message(self, role: ChatRole, content: str) -> None:`}</CodeBlock>
+        <CodeBlock language="python">{`async def add_message(self, role: ChatRole, content: str, metadata: dict | None = None) -> None:`}</CodeBlock>
         <p>
           Appends a single <code>{"{'role', 'content'}"}</code> entry. Accepts any{' '}
           <code>ChatRole</code> value. For action outputs specifically, prefer{' '}
@@ -726,6 +742,7 @@ action, result = await context.start(MyRootAction)`}</CodeBlock>
     self,
     action_or_toolcall: Action | ToolCall,
     content: str,
+    metadata: dict | None = None,
 ) -> None:`}</CodeBlock>
         <p>
           Appends <strong>two</strong> entries: the assistant tool-call message + the tool result
@@ -740,9 +757,10 @@ await context.add_response(self, msg.text)`}</CodeBlock>
         <CodeBlock language="python">{`async def add_usage(
     self,
     action: Action,
-    model: str,
-    usage: UsageMetadata,
+    model: str | None,
+    usage: UsageMetadata | None,
     name: str | None = None,
+    raise_error: bool = False,
 ) -> None:`}</CodeBlock>
         <p>
           Appends to <code>action._usage</code> and merges into <code>context.usages[model]</code>.
@@ -759,8 +777,9 @@ async def update_metadata(self, *paths: Any, value: Any) -> None`}</CodeBlock>
           Deep-set by path. <code>update=True</code> (or <code>update_metadata</code>) extends
           lists/dicts instead of replacing. No paths = replace the entire metadata dict.
         </p>
-        <CodeBlock language="python">{`await context.set_metadata("results", "step1", value="done")
-await context.update_metadata("config", value={"debug": True})   # merges`}</CodeBlock>
+        <CodeBlock language="python">{`await context.set_metadata("results", value={})                  # create the "results" bucket
+await context.set_metadata("results", "step1", value="done")     # metadata["results"]["step1"] = "done"
+await context.update_metadata("results", value={"step2": "ok"})  # merge → {"step1": "done", "step2": "ok"}`}</CodeBlock>
       </div>
 
       <div className="lifecycle-hook-section">
@@ -785,12 +804,12 @@ await context.update_metadata("config", value={"debug": True})   # merges`}</Cod
 
       <div className="lifecycle-hook-section">
         <h3>run_func_in_thread / run_task_in_thread</h3>
-        <CodeBlock language="python">{`async def run_func_in_thread(
-    self, func: Callable, executor=None, *args, **kwargs
+        <CodeBlock language="python">{`def run_func_in_thread(
+    self, task: Callable, executor=None, *args, **kwargs
 ) -> Future
 
-async def run_task_in_thread(
-    self, coroutine: Coroutine, executor=None
+def run_task_in_thread(
+    self, task: Coroutine, executor=None
 ) -> Future`}</CodeBlock>
         <p>
           Run a synchronous callable (<code>run_func_in_thread</code>) or an async coroutine in
@@ -1076,7 +1095,7 @@ class OrchestratorAgent(GRPCAction):
         <CodeBlock language="python">{`GRPCConnection(
     name="worker-pool",            # unique identifier
     url="localhost:50051",         # gRPC server address
-    groups=["workers"],            # action groups to expose on this connection
+    groups=["workers"],            # remote action groups to fetch/consume from this server
     secure=False,                  # TLS — set True for production
     root_certificates=None,        # path or bytes for CA cert
     private_key=None,              # path or bytes for client key
@@ -1085,12 +1104,13 @@ class OrchestratorAgent(GRPCAction):
     compression=None,              # GRPCCompression.Gzip etc.
     interceptors=None,             # list[ClientInterceptor]
     metadata=None,                 # dict — default call metadata (auth headers)
-    allow_exec=False,              # allow remote action execution
+    allow_exec=False,              # UNSAFE: allow exec() of raw code from the server — keep False unless trusted
     manual_enable=False,           # require explicit enable per-request
     allowed_actions=None,          # dict[str, bool] — default allow-list
     remote_action_class=None,      # override GRPCRemoteAction subclass
-    exclude_unset=True,            # strip None fields from wire format
-    require_integration=True,      # fail if integration not configured
+    block_return=False,            # honor a server-returned ActionReturn (e.g. STOP)
+    exclude_unset=True,            # drop fields never explicitly set (pydantic exclude_unset)
+    require_integration=True,      # skip this connection if its integration is not configured
 )`}</CodeBlock>
       </div>
 
@@ -1186,19 +1206,31 @@ class MyAgent(MCPAction):
     mode=MCPMode.SHTTP,               # MCPMode.SSE or MCPMode.SHTTP
     url="http://localhost:8000/mcp",  # server URL
     headers=None,                     # default request headers dict
-    timeout=5.0,                      # connection timeout (seconds)
-    sse_read_timeout=300.0,           # SSE stream read timeout
+    timeout=30.0,                     # connection timeout (seconds)
+    sse_read_timeout=300.0,           # SSE stream read timeout; also drives
+                                      # ClientSession.read_timeout_seconds
     terminate_on_close=True,          # close session on disconnect
     httpx_client_factory=...,         # custom HTTP client factory
     auth=None,                        # httpx Auth object
     on_session_created=None,          # callback(session_id: str) -> None
     async_client_args=None,           # AsyncClientArgs TypedDict
+    client_session_args=None,         # ClientSessionArgs TypedDict — extra
+                                      # mcp.ClientSession kwargs (callbacks, etc.)
     manual_enable=False,              # require explicit enable per-request
     allowed_tools=None,               # dict[str, bool] — default allow-list
     tool_action_class=None,           # override MCPToolAction subclass
-    exclude_unset=True,               # strip None fields
-    require_integration=True,         # fail if integration not configured
+    block_return=False,               # honor a server-returned ActionReturn
+                                      # (e.g. STOP) via consume_result_meta()
+    exclude_unset=True,               # drop fields never explicitly set (pydantic exclude_unset)
+    require_integration=True,         # skip this connection if its integration is not configured
 )`}</CodeBlock>
+        <p>
+          <code>timeout</code> now defaults to <code>30.0</code> (was <code>5.0</code>). The
+          underlying <code>mcp.ClientSession</code> read timeout is derived from{' '}
+          <code>min(timeout, sse_read_timeout)</code>, keeping the session and HTTP transport
+          aligned. Supply <code>client_session_args</code> to configure session-level callbacks
+          (sampling, elicitation, logging, message handlers) directly on the connection.
+        </p>
       </div>
 
       <div className="lifecycle-hook-section">
@@ -1223,6 +1255,21 @@ conn = MCPConnection(
     url="http://localhost:8001/mcp",
     tool_action_class=AuditedTool,   # every tool from this server uses this class
 )`}</CodeBlock>
+        <h4>consume_result_meta</h4>
+        <CodeBlock language="python">{`async def consume_result_meta(self, context: MCPContext, meta: dict[str, Any]) -> ActionResult:`}</CodeBlock>
+        <p>
+          Called after a tool result comes back, with the result&apos;s <code>_meta</code> payload.
+          When the server is a PyBotchi MCP app, that payload carries the remote action&apos;s
+          serialized tree and its <code>ActionReturn</code>. Default behavior: when the connection
+          sets <code>block_return=True</code> and the meta contains a <code>return</code> entry, it
+          rebuilds the signal (e.g. a <code>STOP</code> with its value) so a remote stop can halt
+          the local graph too. Override to inspect the propagated context or customize handling.
+        </p>
+        <CodeBlock language="python">{`class MathProblem(MCPToolAction):
+    async def consume_result_meta(self, context, meta) -> ActionResult:
+        print("remote context:", meta.get("context"))
+        # super() converts meta["return"] into an ActionReturn when block_return=True
+        return await super().consume_result_meta(context, meta)`}</CodeBlock>
       </div>
 
       <div className="lifecycle-hook-section">
@@ -1230,15 +1277,57 @@ conn = MCPConnection(
         <CodeBlock language="python">{`from pybotchi.mcp import build_mcp_app, mount_mcp_app
 
 # Standalone Starlette app with SSE or streamable-HTTP transport
-app = build_mcp_app(MyTools, *groups, transport="streamable-http")
+app = build_mcp_app(*groups, transport="streamable-http", stateless_groups=False)
 
-# Mount into an existing FastAPI / Starlette app
+# Mount into an existing FastAPI / Starlette app — async context manager
 from fastapi import FastAPI
 web_app = FastAPI()
-mount_mcp_app(web_app, MyTools, *groups, transport="sse")`}</CodeBlock>
+async with mount_mcp_app(web_app, *groups, transport="sse", stateless_groups=False):
+    ...  # servers stay mounted for the duration of this block`}</CodeBlock>
         <p>
           Both functions call <code>initialize_mcp_groups()</code> internally. Pass the group
-          names that match the <code>__groups__</code> values on your actions.
+          names that match the <code>__groups__</code> values on your actions (omit them to expose
+          every group).
+        </p>
+        <p>
+          <code>stateless_groups</code> controls each FastMCP server&apos;s{' '}
+          <code>stateless_http</code> flag. Pass a single <code>bool</code> to apply to all groups,
+          or a <code>dict[str, bool]</code> to set it per group. <strong>Keep it{' '}
+          <code>False</code> (the default) to support server-initiated callbacks</strong> &mdash;
+          sampling, elicitation, and logging require a stateful session. Set it <code>True</code>
+          only for simple, fully stateless tools that never call back to the client.
+        </p>
+        <p>
+          PyBotchi also patches each server&apos;s capabilities with a <code>pybotchi_native</code>
+          marker. When a PyBotchi client connects to a PyBotchi server it detects this flag and
+          enables context propagation (see <a href="#mcp-context-propagation">MCP Context
+          Propagation</a>).
+        </p>
+      </div>
+
+      <div className="lifecycle-hook-section" id="mcp-context-propagation">
+        <h3>MCP Context Propagation</h3>
+        <p>
+          When both ends run PyBotchi, the client forwards a snapshot of its context to the server
+          with every tool call, and the server returns its resulting context and action tree back.
+          This lets a distributed MCP graph behave like a single in-process one &mdash; shared
+          metadata flows across the boundary and a remote <code>STOP</code> can halt the whole
+          graph.
+        </p>
+        <CodeBlock language="python">{`class MCPContext(Context[TLLM]):
+    integrations: dict[str, MCPIntegration]  # per-connection runtime overrides
+    source_id: str | None                    # ID of the calling (upstream) context
+    context_id: str                          # unique ID for this context copy
+
+    def mcp_dump(self) -> dict[str, Any]         # full JSON dump (server → client)
+    def mcp_sharing_dump(self) -> dict[str, Any] # dump sent client → server
+                                                 # (re-chains source_id / context_id)`}</CodeBlock>
+        <p>
+          On the server side, each exposed action runs inside an <code>MCPContext</code>
+          reconstructed from the caller&apos;s snapshot; the live FastMCP request is available as{' '}
+          <code>context._request_context</code> for session callbacks (only when the group is{' '}
+          <em>not</em> stateless). On the client side, override{' '}
+          <code>MCPToolAction.consume_result_meta()</code> to read the returned context.
         </p>
       </div>
 
@@ -1258,7 +1347,7 @@ for agent_cls in all_agents():
         <h3>graph / flowchart</h3>
         <CodeBlock language="python">{`from pybotchi import graph
 
-g = graph(MyRootAction, allowed_actions={})  # builds Graph (nodes + edges)
+g = await graph(MyRootAction, allowed_actions={})  # async — builds Graph (nodes + edges)
 diagram = g.flowchart()   # returns Mermaid flowchart TD string
                           # concurrent edges are rendered with animation
 print(diagram)`}</CodeBlock>
@@ -1281,7 +1370,9 @@ result = apply_placeholders("\${greeting}, \${name}!", greeting="Hello", name="W
 # "Hello, World!"`}</CodeBlock>
         <p>
           Used internally to fill <code>__tool_call_prompt__</code> and{' '}
-          <code>__max_iteration_prompt__</code> templates.
+          <code>__max_iteration_prompt__</code> templates. Defaults in the{' '}
+          <code>{'${key:default}'}</code> form are parsed as JSON, so a string default needs
+          quotes (e.g. <code>{'${name:"World"}'}</code>).
         </p>
       </div>
 
@@ -1304,7 +1395,7 @@ class MyAction(Action):
     __enabled__: bool = True                        # False = hidden from parent
     __concurrent__: bool = False                    # ← set on CHILD, not parent
     __max_iteration__: int | None = None            # child selection loop cap
-    __max_self_recursion__: int | None = None       # per-action self-call cap (auto-STOP)
+    __max_self_recursion__: int | None = None       # per-action self-call cap (→ on_max_self_recursion)
     __first_tool_only__: bool = False
     __system_prompt__: str | None = None
     __temperature__: float | None = None
@@ -1325,10 +1416,11 @@ class MyAction(Action):
     async def fallback(self, context: Context, content: str) -> ActionResult: ...
     async def on_error(self, context, exception, unwrapped_exceptions) -> ActionResult: ...
     async def on_max_iteration(self, context: Context) -> ActionResult: ...
+    async def on_max_self_recursion(self, context: Context) -> ActionResult: ...
     async def commit_context(self, context: Context, child: Context) -> None: ...
     async def child_selection(self, context, child_actions=None) -> tuple[list[Action], str]: ...
-    async def child_selection_prompt(self, context, tool_choice) -> str: ...
-    async def max_iteration_prompt(self, context) -> str: ...
+    def child_selection_prompt(self, context, tool_choice) -> str: ...   # sync
+    def max_iteration_prompt(self, context) -> str: ...                  # sync
     async def get_child_actions(self, context) -> dict[str, type[Action]]: ...
     async def on_child_init_error(self, context, next_actions, cls, args, exc): ...
     @classmethod
@@ -1342,7 +1434,7 @@ ActionReturn.stop(value)   # STOP with a return value
 # ── Graph helpers ─────────────────────────────────────────────────────────────
 ParentAction.add_child(ChildCls, name=None, override=False, extended=True)
 ParentAction.remove_child("ChildName")
-g = graph(MyRootAction, allowed_actions={})
+g = await graph(MyRootAction, allowed_actions={})   # graph() is async
 g.flowchart()   # → Mermaid diagram string`}</CodeBlock>
       </div>
     </>

@@ -140,7 +140,7 @@ class GeneratePresentation(Action):
           <li>Logging and notifications</li>
           <li>Re-raise errors for parent agent handling</li>
         </ul>
-        <CodeBlock language="python">{`from pybotchi import Action, ActionReturn, Context
+        <CodeBlock language="python">{`from pybotchi import Action, ActionResult, Context
 
 class GeneratePresentation(Action):
     """Generate presentation based on user's query."""
@@ -149,7 +149,7 @@ class GeneratePresentation(Action):
     # your pre execution method ...
     # your child actions ...
 
-    async def on_error(self, context: Context, exception: Exception, unwrapped_exceptions) -> ActionReturn:
+    async def on_error(self, context: Context, exception: Exception, unwrapped_exceptions) -> ActionResult:
         """Execute on error process."""
         # Consume exception Here
         # Check for type or attributes then execute their respective full back process
@@ -306,9 +306,10 @@ class JiraRequestAction(MCPAction):
         # Optionally adjust headers for MCP arguments for the duration of this context.
         integration["config"]["headers"] = {"Authorization": "Bearer {{access_token}}"}
         # Optionally override allowed_tools for the duration of this context.
+        # allowed_tools is a dict[str, bool], merged over the connection's defaults.
         integration["allowed_tools"] = {
-            "Action1",
-            "Action2",
+            "Action1": True,
+            "Action2": True,
         }`}</CodeBlock>
       </div>
 
@@ -342,10 +343,11 @@ class GeneralChat(GRPCAction):
         integration["config"]["metadata"] = {
             "additional_field_to_be": "included in invocation_metadata"
         }
-        integration["config"]["group"] = "override the group"
-        integration["allowed_tools"] = {
-            "Action1",
-            "Action2",
+        integration["config"]["groups"] = ["override-the-group"]
+        # gRPC uses allowed_actions (dict[str, bool]), merged over the connection's defaults.
+        integration["allowed_actions"] = {
+            "Action1": True,
+            "Action2": True,
         }`}</CodeBlock>
       </div>
 
@@ -365,7 +367,8 @@ class GeneralChat(GRPCAction):
         <CodeBlock language="python">{`from json import dumps
 from typing import Any
 
-from pybotchi import Action, ActionReturn, Context, uuid
+from pybotchi import Action, ActionReturn, Context
+from pybotchi.utils import uuid
 
 
 class GeneralChatWithCorrection(Action):

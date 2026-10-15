@@ -360,6 +360,102 @@ etc ...`}</CodeBlock>
         </ul>
       </div>
 
+      <h3 id="pybotchi-native-mcp">PyBotchi-Native MCP Features</h3>
+      <p>
+        When <strong>both the server and client run PyBotchi</strong>, extra capabilities light up
+        automatically. The server advertises a <code>pybotchi_native</code> capability flag, and the
+        client detects it to enable richer coordination across the MCP boundary. These features are
+        new in <strong>v4.1</strong>.
+      </p>
+
+      <h4>Stateful Sessions &amp; Server Callbacks</h4>
+      <p>
+        By default each MCP group runs as a <strong>stateful</strong> session
+        (<code>stateless_groups=False</code>). A stateful session is required for server-initiated
+        callbacks — sampling, elicitation, and logging — because the server needs an open channel
+        back to the client. Inside a server-side action, reach the live request through{' '}
+        <code>context._request_context</code>:
+      </p>
+      <CodeBlock language="python">{`from mcp.types import SamplingMessage, TextContent
+
+
+class MathProblem(Action):
+    """Solve the math problem."""
+
+    __groups__ = {"mcp": {"group-1"}}
+
+    equation: str = Field(description="The mathematical equation to solve.")
+
+    async def pre(self, context: Context) -> None:
+        """Execute pre process."""
+        # Stateful session (default) → server-initiated callbacks are available
+        result = await context._request_context.session.create_message(
+            messages=[
+                SamplingMessage(
+                    role="user",
+                    content=TextContent(type="text", text="Trigger Sampling Callback"),
+                )
+            ],
+            max_tokens=200,
+        )
+        message = await context.llm.ainvoke(f"Solve \`{self.equation}\`")
+        await context.add_usage(self, context.llm.model, message.usage_metadata)
+        await context.add_response(self, message.text)
+
+
+# Opt into stateless servers only for simple tools that never call back:
+# app = build_mcp_app(transport="streamable-http", stateless_groups=True)
+# Or per-group: stateless_groups={"group-1": False, "group-2": True}`}</CodeBlock>
+
+      <Note>
+        <strong>Trade-off:</strong> stateless servers (<code>stateless_groups=True</code>) are
+        simpler to scale horizontally but cannot perform sampling/elicitation callbacks. Leave the
+        default <code>False</code> whenever your server actions need to talk back to the client.
+      </Note>
+
+      <h4>Context Propagation</h4>
+      <p>
+        On every tool call the client sends a snapshot of its <code>MCPContext</code> to the server,
+        and the server returns its resulting context and serialized action tree back. Shared{' '}
+        <code>metadata</code> therefore flows across the boundary, and each context is chained via{' '}
+        <code>source_id</code> / <code>context_id</code> so a distributed graph behaves like a single
+        in-process one.
+      </p>
+
+      <h4>Returning Values &amp; Blocking Flow</h4>
+      <p>
+        A server action can finish with <code>ActionReturn.stop(value=...)</code>, and that signal is
+        carried back to the client in the tool result&apos;s <code>_meta</code>. Set{' '}
+        <code>block_return=True</code> on the <code>MCPConnection</code> to honor it — the client
+        rebuilds the <code>ActionReturn</code> and can stop its own graph. Override{' '}
+        <code>consume_result_meta()</code> on an <code>MCPToolAction</code> to inspect the propagated
+        context or customize this behavior:
+      </p>
+      <CodeBlock language="python">{`from typing import Any
+
+from pybotchi import ActionResult
+from pybotchi.mcp import MCPAction, MCPConnection, MCPContext, MCPToolAction
+
+
+class GeneralChat(MCPAction):
+    """Casual Generic Chat."""
+
+    __mcp_connections__ = [
+        MCPConnection(
+            "testing",
+            "SHTTP",
+            "http://localhost:8000/group-1/mcp",
+            block_return=True,   # honor a server-returned ActionReturn (e.g. STOP)
+        )
+    ]
+
+    class MathProblem(MCPToolAction):  # customize a specific remote tool
+        async def consume_result_meta(self, context: MCPContext, meta: dict[str, Any]) -> ActionResult:
+            """Inspect the propagated server context."""
+            print(f"Tool result context: {meta.get('context')}")
+            # super() converts meta["return"] into an ActionReturn when block_return=True
+            return await super().consume_result_meta(context, meta)`}</CodeBlock>
+
       <h3>Using MCP with Claude Desktop</h3>
       <p>
         Your PyBotchi MCP server can be consumed by Claude Desktop or any other MCP-compatible

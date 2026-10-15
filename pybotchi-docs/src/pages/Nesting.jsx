@@ -37,7 +37,7 @@ class GeneralChat(Action):
 
         async def pre(self, context: Context) -> None:
             message = await context.llm.ainvoke(context.prompts)
-            await context.add_usage(self, context.llm.model, message.usage_metadata)
+            await context.add_usage(self, context.llm_model, message.usage_metadata)
             await context.add_response(self, message.text)`}</CodeBlock>
 
       <h3 id="deep-hierarchies">Deep Hierarchies</h3>
@@ -190,7 +190,7 @@ class GeneralChat(Action):
 
         async def pre(self, context: Context) -> None:
             message = await context.llm.ainvoke(context.prompts)
-            await context.add_usage(self, context.llm.model, message.usage_metadata)
+            await context.add_usage(self, context.llm_model, message.usage_metadata)
             await context.add_response(self, message.text)`}</CodeBlock>
 
       <div className="highlight-box">

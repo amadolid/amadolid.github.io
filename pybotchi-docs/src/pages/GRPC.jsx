@@ -38,7 +38,7 @@ class MathProblem(Action):
     async def pre(self, context: GRPCContext) -> None:
         """Execute pre process."""
         message = await context.llm.ainvoke(f"Solve \`{self.equation}\`")
-        await context.add_usage(self, context.llm.model, message.usage_metadata)
+        await context.add_usage(self, context.llm_model, message.usage_metadata)
         await context.add_message(
             ChatRole.ASSISTANT,
             "Adding additional message",
@@ -58,7 +58,7 @@ class Translation(Action):
     async def pre(self, context: GRPCContext) -> None:
         """Execute pre process."""
         message = await context.llm.ainvoke(f"Translate \`{self.message}\` to {self.language}")
-        await context.add_usage(self, context.llm.model, message.usage_metadata)
+        await context.add_usage(self, context.llm_model, message.usage_metadata)
         await context.add_response(self, message.text)
 
 
@@ -72,7 +72,7 @@ class JokeWithStoryTelling(GRPCAction):
     async def post(self, context: GRPCContext) -> ActionReturn:
         """Execute post process."""
         message = await context.llm.ainvoke(context.prompts)
-        await context.add_usage(self, context.llm.model, message.usage_metadata, "combine")
+        await context.add_usage(self, context.llm_model, message.usage_metadata, "combine")
         await context.add_message(ChatRole.ASSISTANT, message.text)
         return ActionReturn.STOP
 
@@ -86,7 +86,7 @@ class Joke(Action):
     async def pre(self, context: GRPCContext) -> None:
         """Execute pre process."""
         message = await context.llm.ainvoke("generate very short joke")
-        await context.add_usage(self, context.llm.model, message.usage_metadata)
+        await context.add_usage(self, context.llm_model, message.usage_metadata)
         await context.add_response(self, message.text)
 
 
@@ -99,7 +99,7 @@ class StoryTelling(Action):
     async def pre(self, context: GRPCContext) -> None:
         """Execute pre process."""
         message = await context.llm.ainvoke("generate a very short story")
-        await context.add_usage(self, context.llm.model, message.usage_metadata)
+        await context.add_usage(self, context.llm_model, message.usage_metadata)
         await context.add_response(self, message.text)`;
 
 const CLIENT_PY = `from asyncio import run

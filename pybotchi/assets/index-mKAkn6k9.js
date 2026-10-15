@@ -606,7 +606,7 @@ class MathProblem(Action):
     async def pre(self, context: GRPCContext) -> None:
         """Execute pre process."""
         message = await context.llm.ainvoke(f"Solve \`{self.equation}\`")
-        await context.add_usage(self, context.llm.model, message.usage_metadata)
+        await context.add_usage(self, context.llm_model, message.usage_metadata)
         await context.add_message(
             ChatRole.ASSISTANT,
             "Adding additional message",
@@ -626,7 +626,7 @@ class Translation(Action):
     async def pre(self, context: GRPCContext) -> None:
         """Execute pre process."""
         message = await context.llm.ainvoke(f"Translate \`{self.message}\` to {self.language}")
-        await context.add_usage(self, context.llm.model, message.usage_metadata)
+        await context.add_usage(self, context.llm_model, message.usage_metadata)
         await context.add_response(self, message.text)
 
 
@@ -640,7 +640,7 @@ class JokeWithStoryTelling(GRPCAction):
     async def post(self, context: GRPCContext) -> ActionReturn:
         """Execute post process."""
         message = await context.llm.ainvoke(context.prompts)
-        await context.add_usage(self, context.llm.model, message.usage_metadata, "combine")
+        await context.add_usage(self, context.llm_model, message.usage_metadata, "combine")
         await context.add_message(ChatRole.ASSISTANT, message.text)
         return ActionReturn.STOP
 
@@ -654,7 +654,7 @@ class Joke(Action):
     async def pre(self, context: GRPCContext) -> None:
         """Execute pre process."""
         message = await context.llm.ainvoke("generate very short joke")
-        await context.add_usage(self, context.llm.model, message.usage_metadata)
+        await context.add_usage(self, context.llm_model, message.usage_metadata)
         await context.add_response(self, message.text)
 
 
@@ -667,7 +667,7 @@ class StoryTelling(Action):
     async def pre(self, context: GRPCContext) -> None:
         """Execute pre process."""
         message = await context.llm.ainvoke("generate a very short story")
-        await context.add_usage(self, context.llm.model, message.usage_metadata)
+        await context.add_usage(self, context.llm_model, message.usage_metadata)
         await context.add_response(self, message.text)`,py=`from asyncio import run
 from os import getenv
 from json import dumps
@@ -998,7 +998,7 @@ class MathProblem(Action):
     async def pre(self, context: Context) -> None:
         """Execute pre process."""
         message = await context.llm.ainvoke(f"Solve \`{self.equation}\`")
-        await context.add_usage(self, context.llm.model, message.usage_metadata)
+        await context.add_usage(self, context.llm_model, message.usage_metadata)
         await context.add_response(self, message.text)
 
 
@@ -1013,7 +1013,7 @@ class Translation(Action):
     async def pre(self, context: Context) -> None:
         """Execute pre process."""
         message = await context.llm.ainvoke(f"Translate \`{self.message}\` to {self.language}")
-        await context.add_usage(self, context.llm.model, message.usage_metadata)
+        await context.add_usage(self, context.llm_model, message.usage_metadata)
         await context.add_response(self, message.text)
 
 
@@ -1036,7 +1036,7 @@ class JokeWithStoryTelling(Action):
         async def pre(self, context: Context) -> None:
             """Execute pre process."""
             message = await context.llm.ainvoke("generate very short joke")
-            await context.add_usage(self, context.llm.model, message.usage_metadata)
+            await context.add_usage(self, context.llm_model, message.usage_metadata)
             await context.add_response(self, message.text)
 
     class StoryTelling(Action):
@@ -1047,13 +1047,13 @@ class JokeWithStoryTelling(Action):
         async def pre(self, context: Context) -> None:
             """Execute pre process."""
             message = await context.llm.ainvoke("generate a very short story")
-            await context.add_usage(self, context.llm.model, message.usage_metadata)
+            await context.add_usage(self, context.llm_model, message.usage_metadata)
             await context.add_response(self, message.text)
 
     async def post(self, context: Context) -> ActionReturn:
         """Execute post process."""
         message = await context.llm.ainvoke(context.prompts)
-        await context.add_usage(self, context.llm.model, message.usage_metadata, "combine")
+        await context.add_usage(self, context.llm_model, message.usage_metadata, "combine")
         await context.add_message(ChatRole.ASSISTANT, message.text)
         return ActionReturn.STOP
 
@@ -1178,7 +1178,7 @@ class MathProblem(Action):
             max_tokens=200,
         )
         message = await context.llm.ainvoke(f"Solve \`{self.equation}\`")
-        await context.add_usage(self, context.llm.model, message.usage_metadata)
+        await context.add_usage(self, context.llm_model, message.usage_metadata)
         await context.add_response(self, message.text)
 
 
@@ -1402,7 +1402,7 @@ class GeneralChat(Action):
 
         async def pre(self, context: Context) -> None:
             message = await context.llm.ainvoke(context.prompts)
-            await context.add_usage(self, context.llm.model, message.usage_metadata)
+            await context.add_usage(self, context.llm_model, message.usage_metadata)
             await context.add_response(self, message.text)`}),n.jsx("h3",{id:"deep-hierarchies",children:"Deep Hierarchies"}),n.jsx("p",{children:"Children can themselves have children, forming multi-level trees. Each level gets its own LLM tool-call, progressively narrowing the task."}),n.jsx(j,{language:"python",children:`from pybotchi import Action, ActionReturn, ChatRole, Context
 
 
@@ -1528,7 +1528,7 @@ class GeneralChat(Action):
 
         async def pre(self, context: Context) -> None:
             message = await context.llm.ainvoke(context.prompts)
-            await context.add_usage(self, context.llm.model, message.usage_metadata)
+            await context.add_usage(self, context.llm_model, message.usage_metadata)
             await context.add_response(self, message.text)`}),n.jsxs("div",{className:"highlight-box",children:[n.jsx("h3",{children:"How Child Discovery Works"}),n.jsxs("p",{children:["PyBotchi automatically discovers all inner classes that inherit from ",n.jsx("code",{children:"Action"})," ","and presents them to the LLM as tool options. The order they are defined in the class body is preserved. There is no limit to nesting depth — each level triggers its own tool-call with only that level's children visible to the model."]})]})]})}function Ay(){return n.jsxs(n.Fragment,{children:[n.jsx("h2",{children:"Runtime Builder"}),n.jsxs("p",{children:["PyBotchi lets you modify the agent graph at runtime. You can add or remove child actions after class definition, and you can build circular or iterative workflows using four distinct patterns. This section covers ",n.jsx("code",{children:"add_child"})," / ",n.jsx("code",{children:"remove_child"})," ","and all four loop approaches."]}),n.jsx("h3",{id:"add_child-remove_child",children:"add_child / remove_child"}),n.jsxs("p",{children:["Both ",n.jsx("code",{children:"add_child"})," and ",n.jsx("code",{children:"remove_child"})," are class-level methods. They mutate the action's child list permanently (for the lifetime of the process), so they are typically called at module level after class definitions — not inside hooks."]}),n.jsx(j,{language:"python",children:`from pybotchi import Action
 
 

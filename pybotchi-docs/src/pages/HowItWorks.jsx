@@ -85,7 +85,7 @@ export default function HowItWorks() {
             className="arch-diagram-img"
           />
           <p className="diagram-caption">
-            Hierarchical action execution with parent-child relationships
+            Hierarchical action execution with parent-child relationships (simplified: see Life Cycle Hooks for on_error, iteration, cleanup, and commit_context)
           </p>
         </div>
 

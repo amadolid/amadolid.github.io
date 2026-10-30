@@ -8,7 +8,7 @@ export default function Home({ onNavigate }) {
           The entire system is built upon a minimal foundation of just three core classes:{' '}
           <code>Action</code> (the central agent with a defined lifecycle), <code>Context</code>{' '}
           (the universal container for conversational state and metadata), and <code>LLM</code> (a
-          singleton client for managing your model connection). This lean design minimizes overhead,
+          registry of named model instances). This lean design minimizes overhead,
           ensuring extreme speed and efficiency.
         </>
       ),
@@ -18,8 +18,8 @@ export default function Home({ onNavigate }) {
       title: 'Object-Oriented Design',
       body: (
         <>
-          Achieves maximum customizability through a powerful Object-Oriented structure. All base
-          classes inherit from Pydantic <code>BaseModel</code>, ensuring rigorous data validation
+          Achieves maximum customizability through a powerful Object-Oriented structure. <code>Action</code> and{' '}
+          <code>Context</code> inherit from Pydantic <code>BaseModel</code>, ensuring rigorous data validation
           and adherence to industry-standard type hinting. This foundation makes every component
           inherently overridable and extendable to precisely match complex requirements.
         </>

@@ -16,8 +16,9 @@ export default function LifeCycle() {
       <div className="lifecycle-hook-section">
         <h3>ActionResult — Flow Control</h3>
         <p>
-          Every lifecycle method returns <code>ActionResult</code>, which is{' '}
-          <code>ActionReturn | None</code>. The value controls what happens next:
+          The flow-control hooks (<code>pre</code>, <code>post</code>, <code>fallback</code>,{' '}
+          <code>on_error</code>, <code>on_max_iteration</code>) return <code>ActionResult</code>,
+          which is <code>ActionReturn | None</code>. The value controls what happens next:
         </p>
         <CodeBlock language="python">{`from pybotchi import ActionResult, ActionReturn
 
@@ -44,6 +45,14 @@ return ActionReturn.stop(value="any_value_of_any_type")`}</CodeBlock>
           <code>ActionReturn.STOP</code> are pre-instantiated singletons — use them directly
           without calling a constructor. Only <code>ActionReturn.stop(value=...)</code> is a
           factory method (for when you need to attach a return value).
+        </p>
+        <p>
+          Inside an action with <code>__max_iteration__</code>, its own loop only exits on{' '}
+          <code>BREAK</code> or <code>STOP</code>. <code>END</code> returned from its{' '}
+          <code>fallback</code> or a child is ignored and the loop continues. A <code>BREAK</code>{' '}
+          that exits the action&apos;s own loop is consumed there, so its <code>post</code> still
+          runs. Without a looping ancestor, <code>BREAK</code> propagates up to{' '}
+          <code>context.start()</code>, ending every action on the way.
         </p>
       </div>
 
@@ -107,10 +116,14 @@ class Translate(Action):
           <li>Logging and notifications</li>
         </ul>
         <p>
-          Doesn&apos;t run if the lifecycle was halted (<code>END</code>, <code>BREAK</code>,{' '}
-          <code>STOP</code>) or an error occurred. Use <code>cleanup</code> for anything that must always run.
+          Doesn&apos;t run if the action ended early (<code>END</code>, <code>BREAK</code>,{' '}
+          <code>STOP</code>) or an error occurred. A <code>BREAK</code> that only exits this
+          action&apos;s own <code>__max_iteration__</code> loop still runs <code>post</code>. Use{' '}
+          <code>cleanup</code> for anything that must always run.
         </p>
-        <CodeBlock language="python">{`from pybotchi import Action, ActionReturn, Context
+        <CodeBlock language="python">{`from itertools import islice
+
+from pybotchi import Action, Context
 
 class GeneratePresentation(Action):
     """Generate presentation based on user's query."""
@@ -124,7 +137,7 @@ class GeneratePresentation(Action):
         message = await context.llm.ainvoke(
             [
                 {
-                    "content": f"You are a specialized agent for for generating closing remarks.",
+                    "content": "You are a specialized agent for generating closing remarks.",
                     "role": "system",
                 },
                 *islice(context.prompts, 1, None),
@@ -138,11 +151,29 @@ class GeneratePresentation(Action):
 
       <div className="lifecycle-hook-section">
         <h3 id="on_error">on_error</h3>
-        <p>Handles errors during execution with retry logic or custom error handling.</p>
+        <p>Handles errors raised during execution with custom error handling.</p>
         <ul>
-          <li>Error handling and retry mechanisms</li>
+          <li>Error handling and recovery</li>
           <li>Logging and notifications</li>
           <li>Re-raise errors for parent agent handling</li>
+        </ul>
+        <ul>
+          <li>
+            Returning <code>None</code> swallows the error and the action ends normally, but{' '}
+            <code>post</code> is skipped. Nothing is retried automatically.
+          </li>
+          <li>
+            Errors from concurrent children arrive wrapped in an <code>ExceptionGroup</code>. Inspect{' '}
+            <code>unwrapped_exceptions</code> to match the individual errors.
+          </li>
+          <li>
+            Without an <code>on_error</code> override, the first leaf error is re-raised and a
+            detached context isn&apos;t committed.
+          </li>
+          <li>
+            For <code>MCPAction</code>/<code>GRPCAction</code>, it runs after the MCP/gRPC
+            connections are closed.
+          </li>
         </ul>
         <CodeBlock language="python">{`from pybotchi import Action, ActionResult, Context
 
@@ -158,17 +189,18 @@ class GeneratePresentation(Action):
         # Consume exception Here
         # Check for type or attributes then execute their respective full back process
 
-        # Example:
-        match exception:
-            case ConnectionError():
-                print("Network connection failed")
-                fallback1()
-            case TimeoutError():
-                print("Request timed out")
-                fallback2()
-            case _:
-                print(f"Unexpected error: {type(exception).__name__}: {exception}")
-                fallback3()
+        # Example: unwrapped_exceptions yields the leaf errors (also from ExceptionGroups)
+        for error in unwrapped_exceptions:
+            match error:
+                case ConnectionError():
+                    print("Network connection failed")
+                    fallback1()
+                case TimeoutError():
+                    print("Request timed out")
+                    fallback2()
+                case _:
+                    print(f"Unexpected error: {type(error).__name__}: {error}")
+                    fallback3()
 
         # Optional re-raise
         raise exception`}</CodeBlock>
@@ -178,11 +210,30 @@ class GeneratePresentation(Action):
         <h3 id="fallback">fallback</h3>
         <p>Executes when no child agent is selected, handling non-tool-call results.</p>
         <ul>
-          <li>Process text content results from tool calls</li>
+          <li>Process text returned instead of tool calls</li>
           <li>Allow non-tool-call result handling</li>
           <li>Logging and notifications</li>
         </ul>
-        <CodeBlock language="python">{`from pybotchi import Action, ActionReturn, ChatRole, Context
+        <p>Overriding <code>fallback</code> also changes how child selection works:</p>
+        <ul>
+          <li>
+            The selection call uses <code>tool_choice=&quot;auto&quot;</code>, so the LLM may answer in
+            text instead of calling a tool.
+          </li>
+          <li>
+            The single-child shortcut (one child with no fields runs directly, without an LLM call)
+            is disabled.
+          </li>
+          <li>
+            With no children, the LLM is called on <code>context.prompts</code> and its text is
+            passed to <code>fallback</code>.
+          </li>
+          <li>
+            Inside a <code>__max_iteration__</code> action, return <code>BREAK</code> to finish the
+            loop. <code>END</code> is ignored and the loop continues.
+          </li>
+        </ul>
+        <CodeBlock language="python">{`from pybotchi import Action, ActionResult, ActionReturn, ChatRole, Context
 
 class GeneratePresentation(Action):
     """Generate presentation based on user's query."""
@@ -212,7 +263,12 @@ class GeneratePresentation(Action):
           <li>Custom agent selection logic</li>
           <li>Return declared or undeclared child agents</li>
         </ul>
-        <CodeBlock language="python">{`from pybotchi import Action, ActionReturn, ChatRole, Context
+        <p>
+          It isn&apos;t called when the action has no enabled children, or has exactly one child
+          with no fields and no <code>fallback</code> (that child runs directly).
+        </p>
+        <CodeBlock language="python">{`from pybotchi import Action, Context
+from pybotchi.action import ChildActions
 
 class GeneratePresentation(Action):
     """Generate presentation based on user's query."""
@@ -240,7 +296,7 @@ class GeneratePresentation(Action):
             child_actions[call["name"]](**call["args"]) for call in message.tool_calls
         ]
 
-        # message.text is for a fallback process in case tool_calls is empty.
+        # message.text is passed to fallback when no action is selected.
         return next_actions, message.text
 
         # Alternatively:
@@ -249,19 +305,32 @@ class GeneratePresentation(Action):
 
       <div className="lifecycle-hook-section">
         <h3 id="commit_context">commit_context</h3>
-        <p>The final lifecycle event that controls context merging with the main execution context.</p>
+        <p>
+          The final lifecycle event for detached actions. It controls what merges from the
+          action&apos;s isolated context back into the parent context.
+        </p>
         <ul>
-          <li>Detach and clone current context for isolated execution</li>
           <li>Control which data merges with main context</li>
           <li>Useful for reactive agents that only need final results</li>
         </ul>
-        <CodeBlock language="python">{`from pybotchi import Action, ActionReturn, ChatRole, Context
+        <ul>
+          <li>
+            Overriding it auto-sets <code>__detached__ = True</code>: the action and its children
+            work on a copy of the context.
+          </li>
+          <li>
+            The default only merges token usages. Prompts and metadata stay in the copy unless you
+            merge them here.
+          </li>
+          <li>
+            It&apos;s skipped when an error escapes and <code>on_error</code> isn&apos;t overridden
+            (<code>__to_commit__</code> becomes <code>False</code>).
+          </li>
+        </ul>
+        <CodeBlock language="python">{`from pybotchi import Action, Context
 
 class GeneratePresentation(Action):
     """Generate presentation based on user's query."""
-
-    # optional attribute to enable iteration
-    __max_iteration__ = 5
 
     # your attributes ...
 
@@ -287,9 +356,12 @@ class GeneratePresentation(Action):
           <li>Final logging and metrics</li>
         </ul>
         <CodeBlock language="python">{`from pybotchi import Action, Context
+from pydantic import PrivateAttr
 
 class GeneratePresentation(Action):
     """Generate presentation based on user's query."""
+
+    _conn: Connection | None = PrivateAttr(default=None)
 
     # your attributes ...
 
@@ -300,25 +372,25 @@ class GeneratePresentation(Action):
     async def cleanup(self, context: Context) -> None:
         """Execute cleanup process."""
         # pre may not have run (e.g. max self recursion or an early error)
-        if (conn := getattr(self, "_conn", None)) is not None:
-            await conn.close()`}</CodeBlock>
+        if self._conn is not None:
+            await self._conn.close()`}</CodeBlock>
         <ul>
           <li>
-            Runs before <code>commit_context</code>, so usage and metadata added to a detached
-            context are still merged into the parent.
+            Runs before <code>commit_context</code>, so usage recorded during cleanup is still
+            merged into the parent when the action is detached.
           </li>
           <li>
             May run even when <code>pre</code> didn&apos;t, so don&apos;t assume setup completed.
           </li>
           <li>
             Its return value is ignored and it can&apos;t change the flow. If it raises, that error
-            replaces the action&apos;s result or original error, but <code>commit_context</code>{' '}
-            still runs.
+            replaces the action&apos;s result or original error. <code>commit_context</code> still
+            runs, unless the action already failed with an unhandled error.
           </li>
           <li>
             For <code>MCPAction</code>/<code>GRPCAction</code>, it runs after the MCP/gRPC
-            connections are closed. Do remote cleanup in <code>post</code> or{' '}
-            <code>on_error</code>.
+            connections are closed (as does <code>on_error</code>). Do remote cleanup in{' '}
+            <code>post</code>.
           </li>
         </ul>
       </div>
@@ -350,16 +422,19 @@ class JiraRequestAction(MCPAction):
 
     async def pre_mcp(self, context: MCPContext) -> None:
         """Execute pre process."""
-        if not (integration := context.integrations.get("jira")):
+        # Without an integration entry, this connection is skipped (require_integration=True).
+        if (integration := context.integrations.get("jira")) is None:
             raise NotImplementedError("Feature not yet implemented!")
 
         # Implement guardrails or additional validation for custom security checks.
         # Implement business logic to generate a user token or refresh an existing one
 
         # Optionally adjust headers for MCP arguments for the duration of this context.
-        integration["config"]["headers"] = {"Authorization": "Bearer {{access_token}}"}
+        # Headers are merged over the connection's headers.
+        integration.setdefault("config", {})["headers"] = {"Authorization": "Bearer {{access_token}}"}
         # Optionally override allowed_tools for the duration of this context.
         # allowed_tools is a dict[str, bool], merged over the connection's defaults.
+        # Keys are the generated class names (e.g. "jira_get_issue" -> "JiraGetIssue").
         integration["allowed_tools"] = {
             "Action1": True,
             "Action2": True,
@@ -389,14 +464,17 @@ class GeneralChat(GRPCAction):
 
     async def pre_grpc(self, context: GRPCContext) -> None:
         """Execute pre grpc execution."""
-        if not (integration := context.integrations.get("testing")):
+        # Without an integration entry, this connection is skipped (require_integration=True).
+        if (integration := context.integrations.get("testing")) is None:
             raise NotImplementedError("Feature not yet implemented!")
 
         # Optionally Adjust GRPC connection arguments and additional configuration.
-        integration["config"]["metadata"] = {
-            "additional_field_to_be": "included in invocation_metadata"
+        config = integration.setdefault("config", {})
+        # Metadata is keyed by RPC. Only "connect" is used, as (key, value) pairs.
+        config["metadata"] = {
+            "connect": [("x-additional-field", "included in invocation_metadata")]
         }
-        integration["config"]["groups"] = ["override-the-group"]
+        config["groups"] = ["override-the-group"]
         # gRPC uses allowed_actions (dict[str, bool]), merged over the connection's defaults.
         integration["allowed_actions"] = {
             "Action1": True,
@@ -416,6 +494,11 @@ class GeneralChat(GRPCAction):
           <li>Record the failed tool call in the action&apos;s history for serialization</li>
           <li>Add the error as a response so the LLM can self-correct on the next iteration</li>
           <li>Return <code>None</code> to skip the failed action and continue the loop</li>
+          <li>
+            Return a string to discard the whole selection (including children that built
+            successfully). The string is passed to <code>fallback</code> as{' '}
+            <code>content</code> if <code>fallback</code> is overridden.
+          </li>
         </ul>
         <CodeBlock language="python">{`from json import dumps
 from typing import Any
@@ -433,7 +516,7 @@ class GeneralChatWithCorrection(Action):
     class Print(Action):
         """Print a number."""
 
-        number: int  # LLM may initially send a string — triggers init error
+        number: int  # LLM may send a non-numeric string — triggers init error
 
         async def pre(self, context: Context) -> None:
             await context.add_response(self, str(self.number))

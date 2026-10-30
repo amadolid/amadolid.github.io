@@ -119,7 +119,8 @@ class GeneralChat(Action):
       <Note>
         The class docstring of each inner class becomes its <strong>tool description</strong> for
         the LLM tool-call. Override it in the subclass to give the tool a more contextual description
-        even when inheriting from a base action.
+        even when inheriting from a base action. Python doesn&apos;t inherit docstrings, so a
+        subclass without its own docstring has an empty tool description.
       </Note>
 
       <h3>Mixed Patterns</h3>
@@ -196,10 +197,13 @@ class GeneralChat(Action):
       <div className="highlight-box">
         <h3>How Child Discovery Works</h3>
         <p>
-          PyBotchi automatically discovers all inner classes that inherit from <code>Action</code>{' '}
-          and presents them to the LLM as tool options. The order they are defined in the class body
-          is preserved. There is no limit to nesting depth — each level triggers its own tool-call
-          with only that level&apos;s children visible to the model.
+          PyBotchi automatically discovers every class attribute that is an <code>Action</code>{' '}
+          subclass (inner classes, inherited ones, <code>ClassVar</code> assignments, and children
+          added with <code>add_child</code>) and presents them to the LLM as tool options, sorted
+          alphabetically by attribute name. There is no limit to nesting depth — each level triggers
+          its own tool-call with only that level&apos;s children visible to the model. The exception
+          is a level with exactly one child that has no fields and no <code>fallback</code>: that
+          child runs directly, without an LLM call.
         </p>
       </div>
     </>

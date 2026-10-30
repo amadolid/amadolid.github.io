@@ -25,18 +25,23 @@ export default function Reference() {
             └─ execution(context)
                  ├─ get_child_actions(context)  → filtered children dict
                  ├─ [fast path: 1 child, 0 Pydantic fields, no fallback → run directly, no LLM]
-                 ├─ child_selection(context, children)  → selected [(action, args), ...]
+                 ├─ child_selection(context, children)  → (list of child instances, content)
                  │    └─ default: LLM tool call (tool_choice="auto" if fallback, "any" if Anthropic+no fallback, "required" otherwise)
                  │    └─ for each tool call: instantiate child; on failure → on_child_init_error()
                  ├─ run selected children (concurrent or sequential based on child's __concurrent__)
                  └─ fallback(context, content) if LLM selected nothing
-                      [if zero children: LLM is auto-invoked first, result passed to fallback]
+                      [if zero children and fallback is overridden: LLM is auto-invoked first, result passed to fallback]
+            [the loop only exits early on BREAK/STOP; END from execution is ignored]
             [after loop: if STOP → return early]
             [after loop: if exhausted → on_max_iteration(); if result.is_end → return early]
+            [without __max_iteration__: execution runs once; END/BREAK/STOP → return early]
        └─ post(context)
+       └─ on exception:
+            ├─ on_error not overridden → __to_commit__ = False, re-raise the first leaf error
+            └─ on_error overridden → return its result if is_end, else None (post is skipped)
        └─ finally:
             ├─ cleanup(context)  [always runs, even on END/BREAK/STOP/errors]
-            └─ commit_context(context, child_context)  [only if __detached__ = True; runs even if cleanup raises]`}</CodeBlock>
+            └─ commit_context(parent, child)  [only if __detached__ and __to_commit__; runs even if cleanup raises]`}</CodeBlock>
 
       {/* ================================================================ */}
       <h2 id="action-class-variables">Action Class Variables</h2>
@@ -171,8 +176,13 @@ You are a senior Python engineer. Review for security, performance, and correctn
         </p>
         <p>
           Applied as <code>.with_config(configurable={'{'}"llm_temperature": value{'}'})</code> on
-          the LLM. Affects tool selection, fallback invocation, and <code>on_max_iteration</code>.
+          the LLM. Affects tool selection, fallback invocation, and <code>on_max_iteration</code>.{' '}
           <code>None</code> uses the model&apos;s configured default.
+        </p>
+        <p>
+          It only takes effect if the registered LLM exposes temperature as a configurable field:{' '}
+          <code>LLM.add(base=model.configurable_fields(temperature=ConfigurableField(id=&quot;llm_temperature&quot;)))</code>.
+          Otherwise it&apos;s silently ignored.
         </p>
         <CodeBlock language="python">{`class PreciseRouter(Action):
     __temperature__: float | None = 0.0   # deterministic routing
@@ -241,16 +251,19 @@ class Router(Action):
         </p>
         <p>
           Replaces the entire tool-selection system prompt template. Supports placeholders:{' '}
-          <code>{'${tool_choice}'}</code>, <code>{'${default}'}</code>, and{' '}
+          <code>{'${tool_choice}'}</code> (the mode: <code>auto</code>, <code>any</code>, or{' '}
+          <code>required</code>), <code>{'${default}'}</code> (<code>__default_tool__</code>), and{' '}
           <code>{'${system}'}</code>. Falls back to{' '}
-          <code>DEFAULT_TOOL_CALL_PROMPT</code> (overridable via env var).
+          <code>DEFAULT_TOOL_CALL_PROMPT</code> (overridable via env var). The default template
+          also contains <code>{'${addons}'}</code>, which the core never fills, so it renders empty
+          unless you override <code>child_selection_prompt</code>.
         </p>
         <CodeBlock language="python">{`class MyAction(Action):
     __tool_call_prompt__: str | None = """
 \${system}
 
-Available tools: \${tool_choice}
-Default fallback: \${default}
+Tool choice mode: \${tool_choice}
+Suggested default tool: \${default}
 """.strip()`}</CodeBlock>
       </div>
 
@@ -298,7 +311,6 @@ class SearchTool(Action):
     __groups__: set[str] = {"tools", "public"}
 
 # Groups dict — target specific integration types
-from pybotchi.mcp import MCPAction
 class AdminTool(Action):
     __groups__ = {"mcp": {"admin"}, "grpc": {"internal"}}`}</CodeBlock>
       </div>
@@ -309,10 +321,11 @@ class AdminTool(Action):
           Type: <code>bool</code> &nbsp;|&nbsp; Default: auto
         </p>
         <p>
-          Auto-set <code>True</code> when you override <code>commit_context</code>. Can also
-          be set explicitly. When <code>True</code>: <code>execute()</code> calls{' '}
-          <code>context.detach_context()</code> to create an isolated copy for children to
-          work on.
+          Auto-set <code>True</code> when <code>commit_context</code> is overridden anywhere in
+          the class hierarchy. Can also be set explicitly, but an explicit value is{' '}
+          <strong>not inherited</strong>: subclasses fall back to the automatic value. When{' '}
+          <code>True</code>: <code>execute()</code> calls <code>context.detach_context()</code>,
+          and the action&apos;s own hooks and its children all work on that isolated copy.
         </p>
       </div>
 
@@ -323,8 +336,9 @@ class AdminTool(Action):
           <strong> not inheritable</strong>
         </p>
         <p>
-          Set <code>False</code> internally when an exception propagates without being handled
-          by <code>on_error</code>. Prevents <code>commit_context()</code> from running in the
+          Set <code>False</code> internally when an <code>Exception</code> escapes and{' '}
+          <code>on_error</code> isn&apos;t overridden. (If <code>on_error</code> re-raises, or the
+          task is cancelled, it stays <code>True</code>.) Prevents <code>commit_context()</code> from running in the
           <code>finally</code> block. Can also be set manually to suppress merging. Doesn&apos;t
           affect <code>cleanup</code>, which always runs.
         </p>
@@ -369,9 +383,10 @@ class AdminTool(Action):
         <p>
           Called after all children complete (after the iteration loop exits).
           Default: returns <code>None</code>. Use for consolidating results or final LLM
-          summarization. Skipped if the lifecycle was halted (<code>END</code>/<code>BREAK</code>/
-          <code>STOP</code>) or an error occurred; use <code>cleanup</code> for anything that must
-          always run.
+          summarization. Skipped if the action ended early (<code>END</code>/<code>BREAK</code>/
+          <code>STOP</code>) or an error occurred; a <code>BREAK</code> that only exits this
+          action&apos;s own <code>__max_iteration__</code> loop still runs it. Use{' '}
+          <code>cleanup</code> for anything that must always run.
         </p>
       </div>
 
@@ -380,9 +395,12 @@ class AdminTool(Action):
         <CodeBlock language="python">{`async def fallback(self, context: Context, content: str) -> ActionResult:`}</CodeBlock>
         <p>
           Called when: (a) the LLM selected no tools, or (b) the action has zero children
-          (in which case the LLM is auto-invoked first and the result is passed here).
-          Default: returns <code>None</code>. Use to handle plain-text responses or break
-          iteration loops.
+          (in which case the LLM is auto-invoked first on the full <code>context.prompts</code>{' '}
+          and the result is passed here). Default: returns <code>None</code>. Use to handle
+          plain-text responses or break iteration loops. Overriding it switches{' '}
+          <code>tool_choice</code> to <code>auto</code> and disables the single-child shortcut.
+          Inside the action&apos;s own <code>__max_iteration__</code> loop, return{' '}
+          <code>BREAK</code> to finish; <code>END</code> is ignored there.
         </p>
         <CodeBlock language="python">{`async def fallback(self, context: Context, content: str) -> ActionReturn:
     await context.add_response(self, content)
@@ -403,9 +421,12 @@ class AdminTool(Action):
           Called when a child action fails to instantiate from the LLM&apos;s tool call args
           (e.g. Pydantic validation error). Default: not defined (re-raises).
           Return <code>None</code> to skip the failed action and continue processing any
-          remaining tool calls. Return a string to stop all further tool-call processing and
-          route that string to <code>fallback(content)</code> — useful for feeding an error
-          correction back to the LLM on the next iteration.
+          remaining tool calls. Return a string to stop all further tool-call processing: the
+          whole selection is discarded (including children already built), and the string is
+          routed to <code>fallback(content)</code> if <code>fallback</code> is overridden
+          (otherwise it&apos;s dropped). Useful for feeding an error correction back to the LLM
+          on the next iteration. <code>next_actions</code> is the live list being built, so you
+          can append a replacement action before returning <code>None</code>.
         </p>
         <CodeBlock language="python">{`async def on_child_init_error(self, context, next_actions, child_cls, child_args, exception):
     # Return a string to route to fallback with a correction hint for the next iteration
@@ -425,18 +446,22 @@ class AdminTool(Action):
 ) -> ActionResult:`}</CodeBlock>
         <p>
           Called when any unhandled exception propagates through <code>execute()</code>.
-          Default: not defined (re-raises). Return an <code>ActionResult</code> to recover,
-          or re-raise. <code>unwrapped_exceptions</code> is a generator of leaf exceptions
-          from <code>unwrap_exceptions()</code> — iterate it to inspect{' '}
-          <code>ExceptionGroup</code> members individually.
+          Default: not defined (re-raises the first leaf error and skips{' '}
+          <code>commit_context</code>). Return an <code>ActionResult</code> to recover, or
+          re-raise. Returning <code>None</code> ends the action normally but skips{' '}
+          <code>post</code>; nothing is retried. <code>unwrapped_exceptions</code> is a
+          generator of leaf exceptions from <code>unwrap_exceptions()</code> — iterate it to
+          inspect <code>ExceptionGroup</code> members individually (errors from concurrent
+          children arrive wrapped). For <code>MCPAction</code>/<code>GRPCAction</code>, it runs
+          after the connections are closed.
         </p>
         <CodeBlock language="python">{`async def on_error(self, context, exception, unwrapped_exceptions) -> ActionResult:
-    match exception:
-        case ConnectionError():
-            await context.add_message(ChatRole.USER, "Connection lost, retrying...")
-            return None  # continue
-        case _:
-            raise exception`}</CodeBlock>
+    for error in unwrapped_exceptions:
+        match error:
+            case ConnectionError():
+                await context.add_response(self, "Connection lost. Please try again.")
+                return None  # swallow the error; post is skipped
+    raise exception`}</CodeBlock>
       </div>
 
       <div className="lifecycle-hook-section">
@@ -469,16 +494,17 @@ class AdminTool(Action):
         <h3>commit_context</h3>
         <CodeBlock language="python">{`async def commit_context(self, parent: Context, child: Context) -> None:`}</CodeBlock>
         <p>
-          Called in the <code>finally</code> block when <code>__detached__</code> is{' '}
-          <code>True</code>. Default: merges <code>child_context</code> token usages into{' '}
-          <code>context</code>. Override to selectively merge prompts, metadata, or other state
-          from the isolated branch back into the parent context.
+          Called in the <code>finally</code> block (after <code>cleanup</code>) when{' '}
+          <code>__detached__</code> and <code>__to_commit__</code> are both <code>True</code>.
+          Default: merges the child context&apos;s token usages into the parent. Override to
+          selectively merge prompts, metadata, or other state from the isolated branch back into
+          the parent context.
         </p>
         <CodeBlock language="python">{`async def commit_context(self, parent: Context, child: Context) -> None:
     # Only bring back messages added after the branch point
     new_messages = child.prompts[len(parent.prompts):]
     parent.prompts.extend(new_messages)
-    # Merge usages from parent (always call this)
+    # Merge child usages into the parent (always call this)
     await super().commit_context(parent, child)`}</CodeBlock>
       </div>
 
@@ -492,22 +518,25 @@ class AdminTool(Action):
           resources, resetting state, or final logging.
         </p>
         <ul>
-          <li>Runs before <code>commit_context</code>, so usage/metadata added to a detached context still merges into the parent.</li>
+          <li>Runs before <code>commit_context</code>, so usage recorded during cleanup still merges into the parent when the action is detached.</li>
           <li>May run even if <code>pre</code> didn&apos;t; don&apos;t assume setup completed.</li>
           <li>
             Return value is ignored. If it raises, that error replaces the action&apos;s result (the
-            original error survives only as <code>__context__</code>), skips <code>on_error</code>,
-            and <code>commit_context</code> still runs.
+            original error survives only as <code>__context__</code>) and skips{' '}
+            <code>on_error</code>. <code>commit_context</code> still runs, unless the action
+            already failed with an unhandled error.
           </li>
           <li>
             Can&apos;t tell how the action ended: <code>sys.exc_info()</code> only shows unhandled
             errors. Track the outcome on the instance if you need it.
           </li>
-          <li>For <code>MCPAction</code>/<code>GRPCAction</code>, runs after the connections are closed.</li>
+          <li>For <code>MCPAction</code>/<code>GRPCAction</code>, runs after the connections are closed (as does <code>on_error</code>).</li>
         </ul>
-        <CodeBlock language="python">{`async def cleanup(self, context: Context) -> None:
-    if (conn := getattr(self, "_conn", None)) is not None:   # pre may not have run
-        await conn.close()`}</CodeBlock>
+        <CodeBlock language="python">{`_conn: Connection | None = PrivateAttr(default=None)
+
+async def cleanup(self, context: Context) -> None:
+    if self._conn is not None:   # pre may not have run
+        await self._conn.close()`}</CodeBlock>
       </div>
 
       <div className="lifecycle-hook-section">
@@ -523,11 +552,12 @@ class AdminTool(Action):
         </p>
         <ul>
           <li><code>actions</code> — list of instantiated child <code>Action</code> objects to execute (may be empty)</li>
-          <li><code>content</code> — the LLM&apos;s plain-text message when it did not select any tool (empty string otherwise); routed to <code>fallback(content)</code> when actions is empty</li>
+          <li><code>content</code> — the LLM&apos;s text content (may be non-empty even when tools were selected), or the string returned by <code>on_child_init_error</code>; routed to <code>fallback(content)</code> when actions is empty</li>
         </ul>
         <p>
           Override to add filtering, validation, inject additional actions, or completely bypass
-          the LLM for complex routing logic.
+          the LLM for complex routing logic. It isn&apos;t called when the action has no enabled
+          children, or exactly one child with no fields and no <code>fallback</code>.
         </p>
 
         <h4>Scenario 1 — Additional filtering</h4>
@@ -558,7 +588,11 @@ class AdminTool(Action):
     return actions + [audit], content`}</CodeBlock>
 
         <h4>Scenario 4 — Complete override (no LLM)</h4>
-        <p>For deterministic or rule-based routing, bypass the LLM entirely:</p>
+        <p>
+          For deterministic or rule-based routing, bypass the LLM entirely. The action still needs
+          real children (more than one, or a <code>fallback</code>), otherwise{' '}
+          <code>child_selection</code> isn&apos;t called:
+        </p>
         <CodeBlock language="python">{`async def child_selection(self, context, child_actions=None):
     intent = context.metadata.get("intent")
     routing = {
@@ -580,7 +614,7 @@ class AdminTool(Action):
         <CodeBlock language="python">{`def child_selection_prompt(self, context: Context, tool_choice: str) -> str:
     base = super().child_selection_prompt(context, tool_choice)
     user_role = context.metadata.get("user_role", "user")
-    return f"[Role: {user_role}]\n{base}"`}</CodeBlock>
+    return f"[Role: {user_role}]\\n{base}"`}</CodeBlock>
       </div>
 
       <div className="lifecycle-hook-section">
@@ -651,19 +685,48 @@ async def _as_tool(cls, context: Context) -> dict[str, Any]:
     extended: bool = True,
 ) -> None`}</CodeBlock>
         <p>
-          Adds an action as a child. <code>extended=True</code> (default) creates a new subclass
-          to prevent shared mutable state across different parents. <code>name</code> becomes the
-          tool name. Raises if name already exists unless <code>override=True</code>.
+          Adds an action as a child. Raises if name already exists unless{' '}
+          <code>override=True</code>.
         </p>
+        <ul>
+          <li>
+            <code>extended=True</code> (default) adds <code>extend_action(action, name)</code>: a
+            new subclass named <code>name</code>, so it doesn&apos;t share mutable state (such as
+            its child list) across parents. It keeps the action&apos;s docstring, but
+            non-inheritable attributes (<code>__display_name__</code>, <code>__groups__</code>,{' '}
+            <code>__agent__</code>, <code>__to_commit__</code>, an explicit{' '}
+            <code>__detached__</code>) reset to their defaults. <code>name</code> becomes the tool
+            name.
+          </li>
+          <li>
+            <code>extended=False</code> adds the class itself. Keep <code>name</code> equal to the
+            class name: the LLM is sent the class name, so a different alias can&apos;t be resolved.
+          </li>
+          <li>It doesn&apos;t reach subclasses of the parent that already exist.</li>
+        </ul>
         <CodeBlock language="python">{`class PlannerAgent(Action): ...
 class ExecutorAgent(Action): ...
 class ReviewAgent(Action): ...
 
-PlannerAgent.add_child(ExecutorAgent)
+# extended=False shares the classes themselves, so the cycle closes
+PlannerAgent.add_child(ExecutorAgent, extended=False)
 PlannerAgent.add_child(ReviewAgent)
 
 # Circular: executor can re-invoke planner
-ExecutorAgent.add_child(PlannerAgent)`}</CodeBlock>
+ExecutorAgent.add_child(PlannerAgent, extended=False)`}</CodeBlock>
+      </div>
+
+      <div className="lifecycle-hook-section">
+        <h3>extend_action</h3>
+        <CodeBlock language="python">{`from pybotchi import extend_action
+
+extend_action(action: type[Action], name: str | None = None) -> type[Action]`}</CodeBlock>
+        <p>
+          Returns a new subclass of <code>action</code> named <code>name</code> (default: the
+          action&apos;s own name), keeping its module and docstring. This is what{' '}
+          <code>add_child</code> uses when <code>extended=True</code>.
+        </p>
+        <CodeBlock language="python">{`Forecast = extend_action(WeatherTool, "Forecast")   # same tool description, new name`}</CodeBlock>
       </div>
 
       <div className="lifecycle-hook-section">
@@ -675,8 +738,8 @@ ExecutorAgent.add_child(PlannerAgent)`}</CodeBlock>
     extended: bool = True,
 ) -> None`}</CodeBlock>
         <p>
-          Calls <code>add_child()</code> on every immediate child — injects a capability into
-          the whole subtree at once.
+          Calls <code>add_child()</code> on every immediate child — injects a capability one
+          level down (the grandchild level only; it isn&apos;t recursive).
         </p>
       </div>
 
@@ -686,7 +749,9 @@ ExecutorAgent.add_child(PlannerAgent)`}</CodeBlock>
 Action.remove_grand_child(name: str) -> None`}</CodeBlock>
         <p>
           Remove a child by <strong>name</strong> from <code>__child_actions__</code>.
-          Cascades to all subclasses. <code>remove_grand_child</code> calls{' '}
+          Cascades to all subclasses. If the child is inherited from a parent class, the
+          attribute is set to <code>None</code> on this class instead, which hides it here
+          without touching the parent. <code>remove_grand_child</code> calls{' '}
           <code>remove_child</code> on every immediate child.
         </p>
       </div>
@@ -710,19 +775,35 @@ Action.remove_grand_child(name: str) -> None`}</CodeBlock>
     streaming: bool                  # informational — no built-in effect
                                      # actions read this to decide whether to stream
     max_self_recursion: int | None   # global self-recursion limit (__max_self_recursion__ takes priority)
-    parent: Self | None              # set by detach_context(); reference to originating context`}</CodeBlock>
+    parent: Self | None              # set by detach_context(); reference to originating context
+
+    # cached properties
+    llm: TLLM                        # LLM.base(); override in a subclass to use another model
+    llm_model: str                   # model name read from llm (see MODEL_NAME_SOURCE)
+    llm_is_anthropic: bool           # True if llm._llm_type contains "anthropic"`}</CodeBlock>
+        <p>
+          <code>llm_model</code> checks the LLM&apos;s attributes listed in the{' '}
+          <code>MODEL_NAME_SOURCE</code> env var (default{' '}
+          <code>model,model_name,deployment_name</code>) and falls back to{' '}
+          <code>&quot;UNSPECIFIED&quot;</code>. <code>llm_is_anthropic</code> decides whether
+          child selection uses <code>tool_choice=&quot;any&quot;</code> or{' '}
+          <code>&quot;required&quot;</code>.
+        </p>
       </div>
 
       <div className="lifecycle-hook-section">
         <h3>start</h3>
         <CodeBlock language="python">{`async def start(
     self,
-    ActionClass: type[Action],
+    action: type[Action],
+    /,
     **kwargs: Any,
 ) -> tuple[Action, ActionResult]:`}</CodeBlock>
         <p>
-          The main entry point. Validates that <code>prompts[0]</code> is a system role, resets
-          the <code>_action_call</code> counter, then calls <code>action.execute(context)</code>.
+          The main entry point. Raises <code>RuntimeError</code> unless <code>prompts[0]</code>{' '}
+          is a system role, resets the <code>_action_call</code> counter, instantiates the action
+          with <code>kwargs</code> as its field values, then calls{' '}
+          <code>action.execute(context)</code>.
           Returns <code>(action_instance, ActionResult)</code> — the result may be{' '}
           <code>None</code> when the action completes normally without returning a signal.
         </p>
@@ -737,8 +818,10 @@ action, result = await context.start(MyRootAction)`}</CodeBlock>
         <CodeBlock language="python">{`async def detach_context(self) -> Context:`}</CodeBlock>
         <p>
           Deep-copies <code>prompts</code>, <code>allowed_actions</code>, and{' '}
-          <code>metadata</code>. Sets <code>parent=self</code> on the copy. Used for isolated
-          branches where children should not affect the main context.
+          <code>metadata</code>, and copies <code>streaming</code> and{' '}
+          <code>max_self_recursion</code>. <code>usages</code> starts empty (which is why the
+          default <code>commit_context</code> merges them back). Sets <code>parent=self</code> on
+          the copy. Used for isolated branches where children should not affect the main context.
         </p>
       </div>
 
@@ -746,7 +829,8 @@ action, result = await context.start(MyRootAction)`}</CodeBlock>
         <h3>detached_start</h3>
         <CodeBlock language="python">{`async def detached_start(
     self,
-    ActionClass: type[Action],
+    action: type[Action],
+    /,
     **kwargs: Any,
 ) -> tuple[Context, Action, ActionResult]:`}</CodeBlock>
         <p>
@@ -773,7 +857,7 @@ action, result = await context.start(MyRootAction)`}</CodeBlock>
         <h3>add_response</h3>
         <CodeBlock language="python">{`async def add_response(
     self,
-    action_or_toolcall: Action | ToolCall,
+    action: Action | ToolCall,
     content: str,
     metadata: dict | None = None,
 ) -> None:`}</CodeBlock>
@@ -809,7 +893,9 @@ await context.add_response(self, msg.text)`}</CodeBlock>
 async def update_metadata(self, *paths: Any, value: Any) -> None`}</CodeBlock>
         <p>
           Deep-set by path. <code>update=True</code> (or <code>update_metadata</code>) extends
-          lists/dicts instead of replacing. No paths = replace the entire metadata dict.
+          lists/dicts/sets/tuples instead of replacing. No paths = replace the entire metadata
+          dict (for both methods). Every intermediate key must already exist; a missing one
+          raises <code>ValueError</code>.
         </p>
         <CodeBlock language="python">{`await context.set_metadata("results", value={})                  # create the "results" bucket
 await context.set_metadata("results", "step1", value="done")     # metadata["results"]["step1"] = "done"
@@ -824,6 +910,20 @@ await context.update_metadata("results", value={"step2": "ok"})  # merge → {"s
           logging. Called by the framework on: tool selection start/complete, fallback
           start/complete, finalize start/complete (<code>on_max_iteration</code>&apos;s summary
           step, not the <code>cleanup</code> hook), and gRPC/MCP events.
+        </p>
+        <CodeBlock language="python">{`# Core (status: "started" | "completed")
+{"event": "tool", "type": "selection", "status": ..., "data": [display names] | [{"action", "args"}]}
+{"event": "tool", "type": "fallback",  "status": ..., "data": display_name}
+{"event": "tool", "type": "finalize",  "status": ..., "data": display_name}
+
+# gRPC (status: "started" | "inprogress" | "completed")
+{"event": "grpc", "class": class_name, "type": remote_action_name, "status": ..., "data": ...}
+
+# MCP (status: "started" → args, "inprogress" → {progress, total, message}, "completed" → content)
+{"event": "mcp-call-tool", "class": class_name, "type": tool_name, "status": ..., "data": ...}`}</CodeBlock>
+        <p>
+          Selection events are skipped on the single-child shortcut, and fallback events only
+          fire on the zero-children path (when the LLM is invoked for <code>fallback</code>).
         </p>
       </div>
 
@@ -862,7 +962,11 @@ def run_task_in_thread(
           subclasses to pass extra fields (e.g. DB connection, websocket handle) into the
           detached copy.
         </p>
-        <CodeBlock language="python">{`class AppContext(Context):
+        <CodeBlock language="python">{`from pydantic import ConfigDict
+
+class AppContext(Context):
+    model_config = ConfigDict(arbitrary_types_allowed=True)   # needed for non-pydantic types
+
     db: AsyncSession   # custom field
 
     def detached_kwargs(self, **kwargs: Any) -> dict[str, Any]:
@@ -914,8 +1018,12 @@ ar.is_stop   # True only for STOP             (isinstance(ar, Stop))`}</CodeBloc
         <Note>
           <strong>END vs BREAK inside an iteration loop:</strong> END stops the current
           action's lifecycle but does <em>not</em> break the parent&apos;s loop — the loop
-          continues to the next iteration. BREAK exits the loop immediately and, if the loop
-          is exhausted, skips <code>on_max_iteration()</code>.
+          continues to the next iteration. This also applies to END returned from the looping
+          action&apos;s own <code>fallback</code>. BREAK exits the loop immediately, so{' '}
+          <code>on_max_iteration()</code> isn&apos;t called, and the looping action&apos;s{' '}
+          <code>post</code> still runs. BREAK ends every non-looping action between the
+          returning action and the loop (their <code>post</code> is skipped). With no looping
+          ancestor, it reaches <code>context.start()</code>.
         </Note>
       </div>
 
@@ -957,7 +1065,8 @@ ChatRole.DEVELOPER   # "developer"`}</CodeBlock>
 
 LLM.get(llm: str, type: type[T] | None = None, throw: bool = True) -> T | None
 # type[T] — unconstrained TypeVar; pass the expected class to get a typed return.
-# throw=False returns None instead of raising when the LLM is missing or wrong type.`}</CodeBlock>
+# Without type: returns the instance, or None if missing (never raises).
+# With type: raises Exception if missing or wrong type, unless throw=False (returns None).`}</CodeBlock>
         <CodeBlock language="python">{`from langchain_openai import AzureChatOpenAI
 
 base = LLM.base()                                    # Any
@@ -965,8 +1074,9 @@ typed = LLM.base(AzureChatOpenAI)                   # -> AzureChatOpenAI
 model = LLM.get("powerful", AzureChatOpenAI)        # -> AzureChatOpenAI
 maybe = LLM.get("powerful", AzureChatOpenAI, throw=False)  # -> AzureChatOpenAI | None`}</CodeBlock>
         <p>
-          Inside lifecycle hooks, prefer <code>context.llm</code> — it is already bound with
-          the correct tools for the current action.
+          Inside lifecycle hooks, prefer <code>context.llm</code>: it&apos;s the context&apos;s
+          base LLM (a cached <code>LLM.base()</code>), with no tools bound. Override the{' '}
+          <code>llm</code> property in a Context subclass to use another model.
         </p>
       </div>
 
@@ -1136,17 +1246,26 @@ class OrchestratorAgent(GRPCAction):
     private_key=None,              # path or bytes for client key
     certificate_chain=None,        # path or bytes for client cert
     options=None,                  # list[tuple] — grpc channel options
-    compression=None,              # GRPCCompression.Gzip etc.
-    interceptors=None,             # list[ClientInterceptor]
-    metadata=None,                 # dict — default call metadata (auth headers)
+    compression=None,              # GRPCCompression.Gzip etc. (from pybotchi.grpc.common)
+    interceptors=None,             # list[ClientInterceptor] — use for auth on every RPC
+    metadata=None,                 # dict keyed by RPC; only "connect" is used, as (key, value) pairs
     allow_exec=False,              # UNSAFE: allow exec() of raw code from the server — keep False unless trusted
-    manual_enable=False,           # require explicit enable per-request
-    allowed_actions=None,          # dict[str, bool] — default allow-list
+    manual_enable=False,           # with an allow-list, unlisted actions are excluded
+                                   # instead of falling back to __enabled__
+    allowed_actions=None,          # dict[str, bool] — default allow-list (empty = no filtering)
     remote_action_class=None,      # override GRPCRemoteAction subclass
-    block_return=False,            # honor a server-returned ActionReturn (e.g. STOP)
+    block_return=False,            # False: honor a server-returned ActionReturn (e.g. STOP)
+                                   # True: ignore it
     exclude_unset=True,            # drop fields never explicitly set (pydantic exclude_unset)
-    require_integration=True,      # skip this connection if its integration is not configured
+    require_integration=True,      # skip this connection unless context.integrations has its name
 )`}</CodeBlock>
+        <p>
+          With <code>require_integration=True</code> (the default), a connection is silently
+          skipped when <code>context.integrations</code> has no entry for its name, so a plain
+          context gets no remote actions. Pass <code>integrations={'{'}&quot;name&quot;: {'{}'}{'}'}</code>{' '}
+          (including names used by nested connections on the server, since integrations are
+          forwarded) or set <code>require_integration=False</code>.
+        </p>
       </div>
 
       <div className="lifecycle-hook-section">
@@ -1155,20 +1274,26 @@ class OrchestratorAgent(GRPCAction):
           Dynamically built proxy action that represents a remote server-side action.
           Subclass to customize <code>__concurrent__</code> or to handle streaming events.
         </p>
-        <CodeBlock language="python">{`from pybotchi.grpc import GRPCRemoteAction
+        <CodeBlock language="python">{`from google.protobuf.json_format import MessageToDict
+
+from pybotchi.grpc import GRPCRemoteAction
 
 class MyRemote(GRPCRemoteAction):
     async def grpc_event_update(self, context, event) -> None:
         """Called on each streaming update from the server."""
-        await context.notify(event.data)
+        await log_event(MessageToDict(event)["data"])
+        # super() applies the remote context changes (messages, metadata, notify)
+        await super().grpc_event_update(context, event)
 
     async def grpc_event_close(self, context, event) -> None:
         """Called when the server stream closes."""
-        ...
+        # super() collects usages, child actions, and the ActionReturn
+        await super().grpc_event_close(context, event)
 
     async def grpc_event_error(self, context, event) -> None:
         """Called when the server reports an error event."""
-        ...
+        # super() raises GRPCRemoteError (from pybotchi.grpc.exception)
+        await super().grpc_event_error(context, event)
 
 conn = GRPCConnection(
     name="workers",
@@ -1182,7 +1307,15 @@ conn = GRPCConnection(
         <p>
           Extends <code>Context</code>. Overrides <code>add_message</code>,{' '}
           <code>add_response</code>, <code>set_metadata</code>, and <code>notify</code> to
-          automatically propagate changes up/down through gRPC pipes.
+          automatically propagate changes up/down through gRPC pipes. Other methods and direct
+          mutations (e.g. <code>context.metadata[...] = ...</code>) aren&apos;t propagated. If you
+          override <code>notify</code>, call <code>super().notify()</code> to keep forwarding.
+        </p>
+        <p>
+          The context snapshot sent to the server includes <code>integrations</code> (with any
+          auth headers or metadata set in <code>pre_grpc</code>), prompts, and metadata. Only
+          connect to servers you trust, or override <code>grpc_sharing_dump</code> to strip
+          secrets.
         </p>
         <CodeBlock language="python">{`class GRPCContext(Context[TLLM]):
     integrations: dict[str, GRPCIntegration]  # per-connection runtime overrides
@@ -1241,30 +1374,41 @@ class MyAgent(MCPAction):
     mode=MCPMode.SHTTP,               # MCPMode.SSE or MCPMode.SHTTP
     url="http://localhost:8000/mcp",  # server URL
     headers=None,                     # default request headers dict
-    timeout=30.0,                     # connection timeout (seconds)
-    sse_read_timeout=300.0,           # SSE stream read timeout; also drives
-                                      # ClientSession.read_timeout_seconds
-    terminate_on_close=True,          # close session on disconnect
-    httpx_client_factory=...,         # custom HTTP client factory
-    auth=None,                        # httpx Auth object
-    on_session_created=None,          # callback(session_id: str) -> None
-    async_client_args=None,           # AsyncClientArgs TypedDict
+    timeout=30.0,                     # HTTP timeout (seconds); also caps every MCP request
+    sse_read_timeout=300.0,           # stream read timeout
+    terminate_on_close=True,          # (SHTTP only) close session on disconnect
+    httpx_client_factory=...,         # (SSE only) custom HTTP client factory
+    auth=None,                        # (SSE only) httpx Auth object
+    on_session_created=None,          # (SSE only) callback(session_id: str) -> None
+    async_client_args=None,           # (SHTTP only) extra httpx.AsyncClient kwargs, e.g. {"auth": ...}
     client_session_args=None,         # ClientSessionArgs TypedDict — extra
                                       # mcp.ClientSession kwargs (callbacks, etc.)
-    manual_enable=False,              # require explicit enable per-request
-    allowed_tools=None,               # dict[str, bool] — default allow-list
+    manual_enable=False,              # with an allow-list, unlisted tools are excluded
+                                      # instead of falling back to __enabled__
+    allowed_tools=None,               # dict[str, bool] — default allow-list (empty = no filtering)
     tool_action_class=None,           # override MCPToolAction subclass
-    block_return=False,               # honor a server-returned ActionReturn
-                                      # (e.g. STOP) via consume_result_meta()
+    block_return=False,               # False: honor a server-returned ActionReturn (e.g. STOP)
+                                      # via consume_result_meta(); True: ignore it
     exclude_unset=True,               # drop fields never explicitly set (pydantic exclude_unset)
-    require_integration=True,         # skip this connection if its integration is not configured
+    require_integration=True,         # skip this connection unless context.integrations has its name
 )`}</CodeBlock>
         <p>
           <code>timeout</code> now defaults to <code>30.0</code> (was <code>5.0</code>). The
           underlying <code>mcp.ClientSession</code> read timeout is derived from{' '}
-          <code>min(timeout, sse_read_timeout)</code>, keeping the session and HTTP transport
-          aligned. Supply <code>client_session_args</code> to configure session-level callbacks
-          (sampling, elicitation, logging, message handlers) directly on the connection.
+          <code>min(timeout, sse_read_timeout)</code>, so with the defaults every MCP request,
+          including <code>call_tool</code>, fails after 30 seconds. For slow tools, raise{' '}
+          <code>timeout</code> or pass{' '}
+          <code>client_session_args={'{'}&quot;read_timeout_seconds&quot;: timedelta(...){'}'}</code>.
+          Supply <code>client_session_args</code> to configure session-level callbacks (sampling,
+          elicitation, logging, message handlers) directly on the connection.
+        </p>
+        <p>
+          With <code>require_integration=True</code> (the default), a connection is silently
+          skipped when <code>context.integrations</code> has no entry for its name. Tool names
+          (and <code>allowed_tools</code> keys) are the generated class names: snake_case or
+          kebab-case MCP tool names are camel-cased (<code>jira_get_issue</code> →{' '}
+          <code>JiraGetIssue</code>). <code>context.allowed_actions</code> doesn&apos;t filter
+          remote tools; use <code>allowed_tools</code>.
         </p>
       </div>
 
@@ -1276,13 +1420,16 @@ class MyAgent(MCPAction):
           <code>clean_content()</code> helper that handles all MCP content types (Text, Image,
           Audio, EmbeddedResource, ResourceLink) and a progress callback.
         </p>
-        <CodeBlock language="python">{`from pybotchi.mcp import MCPToolAction
+        <CodeBlock language="python">{`from pybotchi import ActionResult
+from pybotchi.mcp import MCPConnection, MCPContext, MCPToolAction
 
 class AuditedTool(MCPToolAction):
     __concurrent__: bool = True   # run MCP calls concurrently
 
-    async def pre(self, context: Context) -> None:
+    async def pre(self, context: MCPContext) -> ActionResult:
         await log_audit(type(self).__name__, context.metadata)
+        # MCPToolAction.pre makes the actual call_tool request — always call super()
+        return await super().pre(context)
 
 conn = MCPConnection(
     name="audited",
@@ -1295,15 +1442,16 @@ conn = MCPConnection(
         <p>
           Called after a tool result comes back, with the result&apos;s <code>_meta</code> payload.
           When the server is a PyBotchi MCP app, that payload carries the remote action&apos;s
-          serialized tree and its <code>ActionReturn</code>. Default behavior: when the connection
-          sets <code>block_return=True</code> and the meta contains a <code>return</code> entry, it
-          rebuilds the signal (e.g. a <code>STOP</code> with its value) so a remote stop can halt
-          the local graph too. Override to inspect the propagated context or customize handling.
+          serialized tree and its <code>ActionReturn</code>. Default behavior: unless the
+          connection sets <code>block_return=True</code>, a <code>return</code> entry in the meta
+          is rebuilt into the signal (e.g. a <code>STOP</code> with its value) so a remote stop can
+          halt the local graph too. Nothing else from the meta is applied. Override to merge the
+          remote context, usage, or action tree.
         </p>
         <CodeBlock language="python">{`class MathProblem(MCPToolAction):
     async def consume_result_meta(self, context, meta) -> ActionResult:
         print("remote context:", meta.get("context"))
-        # super() converts meta["return"] into an ActionReturn when block_return=True
+        # super() converts meta["return"] into an ActionReturn unless block_return=True
         return await super().consume_result_meta(context, meta)`}</CodeBlock>
       </div>
 
@@ -1335,19 +1483,24 @@ async with mount_mcp_app(web_app, *groups, transport="sse", stateless_groups=Fal
         <p>
           PyBotchi also patches each server&apos;s capabilities with a <code>pybotchi_native</code>
           marker. When a PyBotchi client connects to a PyBotchi server it detects this flag and
-          enables context propagation (see <a href="#mcp-context-propagation">MCP Context
-          Propagation</a>).
+          enables context propagation (see MCP Context Propagation below).
         </p>
       </div>
 
       <div className="lifecycle-hook-section" id="mcp-context-propagation">
         <h3>MCP Context Propagation</h3>
         <p>
-          When both ends run PyBotchi, the client forwards a snapshot of its context to the server
-          with every tool call, and the server returns its resulting context and action tree back.
-          This lets a distributed MCP graph behave like a single in-process one &mdash; shared
-          metadata flows across the boundary and a remote <code>STOP</code> can halt the whole
-          graph.
+          When both ends run PyBotchi, the client forwards a snapshot of its context (prompts,
+          metadata, allowed actions, integrations, usages) to the server with every tool call,
+          and the server returns its resulting context, action tree, and <code>ActionReturn</code>{' '}
+          in the result&apos;s <code>_meta</code>. By default the client only applies the returned{' '}
+          <code>ActionReturn</code>, so a remote <code>STOP</code> can halt the whole graph.
+          Override <code>consume_result_meta()</code> to merge the remote metadata or usage.
+        </p>
+        <p>
+          The snapshot includes <code>integrations</code> (with any auth headers set in{' '}
+          <code>pre_mcp</code>). Only enable this with servers you trust, or override{' '}
+          <code>mcp_sharing_dump</code> to strip secrets.
         </p>
         <CodeBlock language="python">{`class MCPContext(Context[TLLM]):
     integrations: dict[str, MCPIntegration]  # per-connection runtime overrides
@@ -1360,8 +1513,9 @@ async with mount_mcp_app(web_app, *groups, transport="sse", stateless_groups=Fal
         <p>
           On the server side, each exposed action runs inside an <code>MCPContext</code>
           reconstructed from the caller&apos;s snapshot; the live FastMCP request is available as{' '}
-          <code>context._request_context</code> for session callbacks (only when the group is{' '}
-          <em>not</em> stateless). On the client side, override{' '}
+          <code>context._request_context</code> for session callbacks (it&apos;s always set, but
+          callbacks only work when the group is <em>not</em> stateless, and it&apos;s{' '}
+          <code>None</code> outside MCP). On the client side, override{' '}
           <code>MCPToolAction.consume_result_meta()</code> to read the returned context.
         </p>
       </div>
@@ -1386,6 +1540,22 @@ g = await graph(MyRootAction, allowed_actions={})  # async — builds Graph (nod
 diagram = g.flowchart()   # returns Mermaid flowchart TD string
                           # concurrent edges are rendered with animation
 print(diagram)`}</CodeBlock>
+        <p>
+          An empty or missing <code>allowed_actions</code> includes every child, even ones with{' '}
+          <code>__enabled__ = False</code>. Pass a non-empty dict to apply the same filtering as{' '}
+          <code>get_child_actions()</code>.
+        </p>
+      </div>
+
+      <div className="lifecycle-hook-section">
+        <h3>Action.serialize</h3>
+        <CodeBlock language="python">{`action, result = await context.start(MyRootAction)
+tree = action.serialize()   # mode="python" (default) or "json"
+# {"name": "MyRootAction", "args": {...}, "usages": [...], "actions": [ ...children... ]}`}</CodeBlock>
+        <p>
+          Returns the executed action tree: each action&apos;s name, arguments, recorded usages,
+          and the actions it ran, recursively. Useful for logging and auditing a turn.
+        </p>
       </div>
 
       <div className="lifecycle-hook-section">
@@ -1400,7 +1570,7 @@ new_id = uuid()   # returns a UUID object`}</CodeBlock>
         <h3>apply_placeholders</h3>
         <CodeBlock language="python">{`from pybotchi.utils import apply_placeholders
 
-# Supports ${'{'}key{'}'} and ${'{'}key:default{'}'} syntax
+# Supports \${key} and \${key:default} syntax
 result = apply_placeholders("\${greeting}, \${name}!", greeting="Hello", name="World")
 # "Hello, World!"`}</CodeBlock>
         <p>
@@ -1423,7 +1593,7 @@ for exc in unwrap_exceptions(outer_exception):
       {/* ================================================================ */}
       <div className="highlight-box">
         <h3>Quick Cheat-Sheet</h3>
-        <CodeBlock language="python">{`from pybotchi import Action, ActionResult, ActionReturn, ChatRole, Context, LLM, graph, all_agents
+        <CodeBlock language="python">{`from pybotchi import Action, ActionResult, ActionReturn, ChatRole, Context, LLM, graph, all_agents, extend_action
 
 # ── Class variables (select overrides) ───────────────────────────────────────
 class MyAction(Action):
@@ -1443,7 +1613,8 @@ class MyAction(Action):
     __groups__: set[str] | None = None              # set → all valid groups
     __agent__: bool = False                         # marker for all_agents()
     __to_commit__: bool = True
-    __detached__: bool = False                      # auto-set when commit_context overridden
+    __detached__: bool = False                      # auto: True if commit_context is overridden
+                                                    # (explicit value isn't inherited)
 
 # ── Lifecycle hooks ───────────────────────────────────────────────────────────
     async def pre(self, context: Context) -> ActionResult: ...
@@ -1452,13 +1623,13 @@ class MyAction(Action):
     async def on_error(self, context, exception, unwrapped_exceptions) -> ActionResult: ...
     async def on_max_iteration(self, context: Context) -> ActionResult: ...
     async def on_max_self_recursion(self, context: Context) -> ActionResult: ...
-    async def commit_context(self, context: Context, child: Context) -> None: ...
+    async def commit_context(self, parent: Context, child: Context) -> None: ...
     async def cleanup(self, context: Context) -> None: ...              # always runs, like finally
     async def child_selection(self, context, child_actions=None) -> tuple[list[Action], str]: ...
     def child_selection_prompt(self, context, tool_choice) -> str: ...   # sync
     def max_iteration_prompt(self, context) -> str: ...                  # sync
     async def get_child_actions(self, context) -> dict[str, type[Action]]: ...
-    async def on_child_init_error(self, context, next_actions, cls, args, exc): ...
+    async def on_child_init_error(self, context, next_actions, cls, args, exc) -> str | None: ...
     @classmethod
     async def _as_tool(cls, context) -> dict | type[BaseModel]: ...
 
@@ -1469,7 +1640,8 @@ ActionReturn.stop(value)   # STOP with a return value
 
 # ── Graph helpers ─────────────────────────────────────────────────────────────
 ParentAction.add_child(ChildCls, name=None, override=False, extended=True)
-ParentAction.remove_child("ChildName")
+ParentAction.remove_child("ChildName")   # inherited children are shadowed with None
+extend_action(ChildCls, "Alias")         # subclass that keeps the docstring
 g = await graph(MyRootAction, allowed_actions={})   # graph() is async
 g.flowchart()   # → Mermaid diagram string`}</CodeBlock>
       </div>

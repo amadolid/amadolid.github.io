@@ -29,11 +29,11 @@ class A0(Action):
     A1: ClassVar = A1
     A2: ClassVar = A2
 
-    # OR
+    # OR (docstrings aren't inherited, so repeat them for the tool description)
     # class A1(A1):
-    #    pass
+    #    """Doc 1."""
     # class A2(A2):
-    #    pass
+    #    """Doc 2."""
 
     # Additional Agents
     class A3(Action):

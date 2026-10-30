@@ -44,7 +44,7 @@ LLM.add(
         first agent:
       </p>
 
-      <CodeBlock language="python">{`from pybotchi import Action, ActionReturn, Context
+      <CodeBlock language="python">{`from pybotchi import Action, ActionResult, Context
 
 from pydantic import Field
 
@@ -53,12 +53,12 @@ from pydantic import Field
 class GeneralChat(Action):
     """Casual Generic Chat."""
 
-    class AnswerMathProlem(Action):
+    class AnswerMathProblem(Action):
         """Answer math problem."""
 
         answer: str = Field(description="The answer to the math problem")
 
-        async def pre(self, context: Context) -> ActionReturn:
+        async def pre(self, context: Context) -> ActionResult:
             """Execute pre process."""
             await context.add_response(self, self.answer)
             return None
@@ -69,7 +69,7 @@ class GeneralChat(Action):
 
         translation: str = Field(description="The translation of the query")
 
-        async def pre(self, context: Context) -> ActionReturn:
+        async def pre(self, context: Context) -> ActionResult:
             """Execute pre process."""
             await context.add_response(self, self.translation)
             return None`}</CodeBlock>
@@ -137,7 +137,7 @@ run(main())`}</CodeBlock>
             {
                 "id": "call_ea7e65251a02464ba1c60d403748dae4",
                 "function": {
-                    "name": "AnswerMathProlem",
+                    "name": "AnswerMathProblem",
                     "arguments": "{\\"answer\\":\\"4 x 4\\"}"
                 },
                 "type": "function"
@@ -147,11 +147,11 @@ run(main())`}</CodeBlock>
     ...
 ]
 flowchart TD
-__main__.GeneralChat.AnswerMathProlem[AnswerMathProlem]
+__main__.GeneralChat.AnswerMathProblem[AnswerMathProblem]
 __main__.GeneralChat.Translate[Translate]
 __main__.GeneralChat{GeneralChat}
 __main__.GeneralChat --> __main__.GeneralChat.Translate
-__main__.GeneralChat --> __main__.GeneralChat.AnswerMathProlem
+__main__.GeneralChat --> __main__.GeneralChat.AnswerMathProblem
 style __main__.GeneralChat fill:#4CAF50,color:#000000`}</CodeBlock>
 
       <h3>Mermaid-JS Flowchart</h3>

@@ -3,7 +3,7 @@ export default function Header({ onSearchOpen, onNavigate }) {
     <header className="doc-header">
       <button className="header-logo" onClick={() => onNavigate('home')}>
         <span className="logo-text">PyBotchi</span>
-        <span className="version-badge">v4.2.0</span>
+        <span className="version-badge">v4.2.1</span>
       </button>
 
       <button className="header-search" onClick={onSearchOpen}>

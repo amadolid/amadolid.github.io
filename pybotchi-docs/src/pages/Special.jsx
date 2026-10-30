@@ -42,7 +42,7 @@ class ResearchAgent(Action):
 
         async def pre(self, context: Context) -> None:
             # I/O bound — benefits from concurrency
-            content = await fetch(url)
+            content = await fetch(self.url)
             await context.add_response(self, content)
 
     class FetchDatabaseRecords(Action):
@@ -102,10 +102,10 @@ class IterativeAnalyst(Action):
       </div>
 
       <div className="lifecycle-hook-section">
-        <h3>__max_self_recursion__</h3>
+        <h3 id="__max_self_recursion__">__max_self_recursion__</h3>
         <p>
           Per-action self-recursion cap. Tracks how many times this specific action class has been
-          called within a single turn. Once the limit is reached, the{' '}
+          called within a single turn. When a call exceeds the limit, the{' '}
           <code>on_max_self_recursion()</code> hook is invoked &mdash; which by default returns{' '}
           <code>ActionReturn.STOP</code>, halting the entire agent. Override that hook to log, notify,
           or return <code>None</code> to let execution continue past the cap. Use this to guard
@@ -128,7 +128,7 @@ class LoopGuardedAgent(Action):
         <p>
           When <code>True</code>, only the first tool call from the LLM response is executed, even
           if the model suggests multiple tools. This is useful for strictly sequential step-by-step
-          workflows.
+          workflows. It also sends <code>parallel_tool_calls=False</code> to the LLM.
         </p>
         <CodeBlock language="python">{`from pybotchi import Action, ActionReturn, Context
 
@@ -187,11 +187,28 @@ Always recommend actionable improvements.
       <div className="lifecycle-hook-section">
         <h3 id="__temperature__">__temperature__</h3>
         <p>
-          Overrides the model temperature for the tool selection trigger of this action.
-          Lower values (closer to 0) make output more deterministic; higher values increase creativity.
-          If not set, the model&apos;s default temperature is used.
+          Overrides the model temperature for this action&apos;s LLM calls: tool selection, the
+          no-children <code>fallback</code> call, and <code>on_max_iteration</code>. Lower values
+          (closer to 0) make output more deterministic; higher values increase creativity. If not
+          set, the model&apos;s default temperature is used.
         </p>
-        <CodeBlock language="python">{`from pybotchi import Action, ActionReturn, Context
+        <p>
+          It&apos;s applied as{' '}
+          <code>llm.with_config(configurable={'{'}&quot;llm_temperature&quot;: value{'}'})</code>,
+          so it only takes effect if the registered LLM exposes temperature as a configurable field
+          with the id <code>llm_temperature</code>. Otherwise it&apos;s silently ignored.
+        </p>
+        <CodeBlock language="python">{`from langchain_core.runnables import ConfigurableField
+from langchain_openai import ChatOpenAI
+
+from pybotchi import LLM, Action, Context
+
+# Required once, when registering the LLM
+LLM.add(
+    base=ChatOpenAI(model="gpt-4.1").configurable_fields(
+        temperature=ConfigurableField(id="llm_temperature")
+    )
+)
 
 
 class DeterministicRouter(Action):
@@ -205,7 +222,11 @@ class CreativeWriter(Action):
     """Generate creative content."""
 
     # Higher temperature for more varied, creative responses
-    __temperature__: float | None = 1.2`}</CodeBlock>
+    __temperature__: float | None = 1.2
+
+    # With no children, the LLM is only called when fallback is overridden
+    async def fallback(self, context: Context, content: str) -> None:
+        await context.add_response(self, content)`}</CodeBlock>
       </div>
 
       <div className="lifecycle-hook-section">
@@ -259,7 +280,7 @@ class MyAgent(Action):
     """A custom agent implementation."""
 
     # Not inheritable — always resets to False in subclasses
-    __agent__: bool = False  # default
+    __agent__: bool = True  # default: False
 
     ...
 
@@ -285,7 +306,7 @@ class MySubAgent(MyAgent):
     __max_iteration_prompt__: str | None = None     # Override finalization prompt template
     __temperature__: float | None = None            # Model temperature override
     __max_child_selection_prompts__: int | None = None  # Sliding window for prompt history
-    __default_tool__: str = DEFAULT_ACTION          # Fallback when no tool is selected
+    __default_tool__: str = DEFAULT_ACTION          # Tool suggested as default in the selection prompt
     __first_tool_only__: bool = False               # Only execute the first tool call
     __concurrent__: bool = False                    # Run this action concurrently (set on child)
     __max_iteration__: int | None = None            # Max child selection loop iterations
@@ -293,7 +314,10 @@ class MySubAgent(MyAgent):
     # ── not inheritable ──────────────────────────────────────────────────────
     __agent__: bool = False                         # Mark as agent type (no runtime effect)
     __display_name__: str                           # Human-friendly name for notify()/MCP
-    __groups__: Groups | set[str] | None = None     # gRPC/MCP/a2a group membership`}</CodeBlock>
+    __groups__: Groups | set[str] | None = None     # gRPC/MCP/a2a group membership
+    __to_commit__: bool = True                      # False = skip commit_context
+    __detached__: bool                              # auto: True if commit_context is overridden;
+                                                    # an explicit value isn't inherited`}</CodeBlock>
       </div>
     </>
   )

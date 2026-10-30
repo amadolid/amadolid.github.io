@@ -55,20 +55,20 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handler)
   }, [])
 
-  useEffect(() => {
-    const section = targetSectionRef.current
-    targetSectionRef.current = null
-    if (section) {
-      const el = mainRef.current?.querySelector(`[id="${section}"]`)
-      if (el) {
-        const top = el.getBoundingClientRect().top + window.scrollY - 80
-        window.scrollTo({ top: Math.max(0, top), behavior: 'instant' })
-      } else {
-        window.scrollTo(0, 0)
-      }
+  const scrollToSection = (section) => {
+    const el = section && mainRef.current?.querySelector(`[id="${section}"]`)
+    if (el) {
+      const top = el.getBoundingClientRect().top + window.scrollY - 80
+      window.scrollTo({ top: Math.max(0, top), behavior: 'instant' })
     } else {
       window.scrollTo(0, 0)
     }
+  }
+
+  useEffect(() => {
+    const section = targetSectionRef.current
+    targetSectionRef.current = null
+    scrollToSection(section)
   }, [active])
 
   useEffect(() => {
@@ -83,6 +83,12 @@ export default function App() {
   }, [])
 
   const navigate = (id, section = null) => {
+    if (id === active) {
+      // Same page: the [active] effect won't fire, so scroll directly
+      scrollToSection(section)
+      setSidebarOpen(false)
+      return
+    }
     targetSectionRef.current = section
     setActive(id)
     history.pushState(null, '', `#${id}`)

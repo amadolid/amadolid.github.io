@@ -73,7 +73,7 @@ mypy pybotchi`}</CodeBlock>
       <div className="style-guidelines">
         <ul>
           <li><strong>Line length:</strong> 120 characters max</li>
-          <li><strong>Python:</strong> 3.12+ target</li>
+          <li><strong>Python:</strong> supports 3.12+ (ruff and mypy target 3.13)</li>
           <li><strong>Docstrings:</strong> Single sentence if descriptive enough, Google-style for complex cases</li>
           <li><strong>Type hints:</strong> Required for function signatures</li>
         </ul>
@@ -82,7 +82,7 @@ mypy pybotchi`}</CodeBlock>
       <p>Example:</p>
       <CodeBlock language="python">{`"""Example action module demonstrating PyBotchi coding standards."""
 
-from pybotchi import Action, ActionReturn, Context
+from pybotchi import Action, ActionResult, Context
 from pydantic import Field
 
 
@@ -91,7 +91,7 @@ class ExampleAction(Action):
 
     field_name: str = Field(description="Field description")
 
-    async def pre(self, context: Context) -> None:
+    async def pre(self, context: Context) -> ActionResult:
         """Execute pre-processing logic before child actions."""`}</CodeBlock>
 
       <h3>💬 Commit Messages</h3>
@@ -142,9 +142,9 @@ class ExampleAction(Action):
           <p>If needed, update relevant docs</p>
         </div>
         <div className="pr-step">
-          <h4>3. Rebase on main</h4>
+          <h4>3. Rebase on master</h4>
           <CodeBlock language="bash">{`git fetch origin
-git rebase origin/main`}</CodeBlock>
+git rebase origin/master`}</CodeBlock>
         </div>
         <div className="pr-step">
           <h4>4. Push and create PR</h4>
@@ -174,6 +174,7 @@ git rebase origin/main`}</CodeBlock>
           { title: 'Steps to Reproduce', desc: 'How can we recreate the problem?' },
           { title: 'Expected vs Actual', desc: 'What should happen vs what actually happens?' },
           { title: 'Environment', desc: 'PyBotchi version, Python version, OS' },
+          { title: 'Error Output', desc: 'Error messages and stack traces, if any' },
         ].map(({ title, desc }) => (
           <div className="contribution-card" key={title}>
             <h4>{title}</h4>

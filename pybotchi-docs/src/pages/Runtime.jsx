@@ -48,6 +48,38 @@ Router.remove_child("SummaryTool")`}</CodeBlock>
         multiple names, or when creating circular references.
       </Note>
 
+      <ul>
+        <li>
+          By default (<code>extended=True</code>), <code>add_child</code> adds a new subclass
+          built with <code>extend_action(action, name)</code>. The subclass keeps the
+          action&apos;s docstring (its tool description), but attributes that aren&apos;t
+          inheritable (<code>__display_name__</code>, <code>__groups__</code>,{' '}
+          <code>__agent__</code>, <code>__to_commit__</code>, an explicit{' '}
+          <code>__detached__</code>) are reset to their defaults.
+        </li>
+        <li>
+          With <code>extended=False</code> the class itself is added, so its children are shared.
+          Use it for circular wiring, and keep <code>name</code> equal to the class name.
+        </li>
+        <li>
+          <code>add_child</code> on a base class doesn&apos;t reach subclasses that already exist.
+        </li>
+        <li>
+          <code>remove_child</code> on a subclass for an inherited child sets the attribute to{' '}
+          <code>None</code> on the subclass, which hides it there without touching the parent.
+        </li>
+      </ul>
+
+      <CodeBlock language="python">{`from pybotchi import Action, extend_action
+
+
+class WeatherTool(Action):
+    """Get the current weather."""
+
+
+# A subclass named "Forecast" that keeps WeatherTool's docstring
+Forecast = extend_action(WeatherTool, "Forecast")`}</CodeBlock>
+
       <h3 id="iteration-pattern">Iteration Pattern</h3>
       <p>
         The simplest loop: set <code>__max_iteration__</code> to allow the parent to cycle

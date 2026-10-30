@@ -99,8 +99,8 @@ class JokeWithStoryTelling(Action):
         return ActionReturn.STOP
 
 
-# SSE paths /group-1/sse & /group-2/sse
-# Streamable HTTP paths /group-1/mcp & /group-2/mcp
+# transport="streamable-http" (default) serves /group-1/mcp & /group-2/mcp
+# transport="sse" serves /group-1/sse & /group-2/sse instead
 app = build_mcp_app(transport="streamable-http")
 
 if __name__ == "__main__":
@@ -115,6 +115,7 @@ const SERVER_MOUNTED = `from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from uvicorn import run
 
 from pybotchi.mcp import mount_mcp_app
 
@@ -256,6 +257,12 @@ export default function MCP() {
           with existing web infrastructure
         </li>
       </ul>
+      <p>
+        The server picks one per group with <code>transport=&quot;sse&quot;</code> or{' '}
+        <code>&quot;streamable-http&quot;</code> (the default). On the client, match it with{' '}
+        <code>MCPMode.SSE</code> or <code>MCPMode.SHTTP</code>. The mode is case-sensitive:
+        lowercase <code>&quot;sse&quot;</code> silently falls back to SHTTP.
+      </p>
 
       <h3>Core Capabilities</h3>
       <div className="features-grid">
@@ -265,7 +272,7 @@ export default function MCP() {
           { icon: '🔄', title: 'Bidirectional Integration', body: 'Serve your Actions as MCP tools OR consume external MCP servers as child Actions. Mix and match based on your architecture needs.' },
           { icon: '⚡', title: 'Concurrent Execution', body: 'MCP Actions support the same concurrent execution patterns as local Actions. Enable __concurrent__ for parallel processing across MCP boundaries.' },
           { icon: '🏗️', title: 'FastAPI Integration', body: 'Mount MCP endpoints directly to existing FastAPI applications or run standalone with Starlette. Integrate seamlessly with your current web infrastructure.' },
-          { icon: '🛠️', title: 'Complete Lifecycle Control', body: 'All PyBotchi lifecycle hooks work with MCP Actions. Use pre_mcp for authentication, override context propagation, and maintain full control.' },
+          { icon: '🛠️', title: 'Complete Lifecycle Control', body: 'All PyBotchi lifecycle hooks work with MCP Actions. Use pre_mcp for authentication, override context propagation, and maintain full control. On an MCPAction, on_error and cleanup run after its connections close.' },
         ].map(({ icon, title, body }) => (
           <div className="feature-card" key={title}>
             <div className="feature-icon">{icon}</div>
@@ -327,7 +334,7 @@ INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)`}</Cod
         <CodeBlock language="bash">{`Trigger anything here before mcp client connection
 Build context.integrations['testing']['config']
 Refresh tokens
-etc ...`}</CodeBlock>
+...`}</CodeBlock>
       </Collapsible>
 
       <h3>Execution Graph Visualization</h3>
@@ -338,11 +345,15 @@ etc ...`}</CodeBlock>
       />
 
       <h3>MCP Endpoints Structure</h3>
-      <p>PyBotchi automatically generates MCP endpoints based on your Action groups:</p>
+      <p>
+        PyBotchi automatically generates one MCP endpoint per Action group, depending on{' '}
+        <code>transport</code> (pass a dict to choose per group):
+      </p>
       <ul>
-        <li><code>/&lt;group-name&gt;/mcp</code> — Streamable HTTP endpoint for the group</li>
-        <li><code>/&lt;group-name&gt;/sse</code> — Server-Sent Events endpoint for the group</li>
+        <li><code>/&lt;group-name&gt;/mcp</code> — Streamable HTTP endpoint (<code>transport=&quot;streamable-http&quot;</code>, the default)</li>
+        <li><code>/&lt;group-name&gt;/sse</code> and <code>/&lt;group-name&gt;/messages/</code> — Server-Sent Events endpoints (<code>transport=&quot;sse&quot;</code>)</li>
       </ul>
+      <p>Group names are lowercased in the paths.</p>
       <p>
         Each endpoint exposes only the Actions assigned to that group via <code>__groups__</code>,
         enabling fine-grained access control and logical organization.
@@ -388,16 +399,18 @@ class MathProblem(Action):
 
     async def pre(self, context: Context) -> None:
         """Execute pre process."""
-        # Stateful session (default) → server-initiated callbacks are available
-        result = await context._request_context.session.create_message(
-            messages=[
-                SamplingMessage(
-                    role="user",
-                    content=TextContent(type="text", text="Trigger Sampling Callback"),
-                )
-            ],
-            max_tokens=200,
-        )
+        # Stateful session (default) → server-initiated callbacks are available.
+        # _request_context is None when the action runs outside MCP (locally or via gRPC).
+        if (request := getattr(context, "_request_context", None)) is not None:
+            result = await request.session.create_message(
+                messages=[
+                    SamplingMessage(
+                        role="user",
+                        content=TextContent(type="text", text="Trigger Sampling Callback"),
+                    )
+                ],
+                max_tokens=200,
+            )
         message = await context.llm.ainvoke(f"Solve \`{self.equation}\`")
         await context.add_usage(self, context.llm_model, message.usage_metadata)
         await context.add_response(self, message.text)
@@ -405,7 +418,10 @@ class MathProblem(Action):
 
 # Opt into stateless servers only for simple tools that never call back:
 # app = build_mcp_app(transport="streamable-http", stateless_groups=True)
-# Or per-group: stateless_groups={"group-1": False, "group-2": True}`}</CodeBlock>
+# Or per-group: stateless_groups={"group-1": False, "group-2": True}
+
+# Client side: handle the callback on the connection
+# MCPConnection(..., client_session_args={"sampling_callback": my_sampling_callback})`}</CodeBlock>
 
       <Note>
         <strong>Trade-off:</strong> stateless servers (<code>stateless_groups=True</code>) are
@@ -415,19 +431,28 @@ class MathProblem(Action):
 
       <h4>Context Propagation</h4>
       <p>
-        On every tool call the client sends a snapshot of its <code>MCPContext</code> to the server,
-        and the server returns its resulting context and serialized action tree back. Shared{' '}
-        <code>metadata</code> therefore flows across the boundary, and each context is chained via{' '}
-        <code>source_id</code> / <code>context_id</code> so a distributed graph behaves like a single
-        in-process one.
+        On every tool call the client sends a snapshot of its <code>MCPContext</code> (prompts,
+        metadata, allowed actions, integrations, usages) to the server, so the server action sees
+        the client&apos;s state. Each context is chained via <code>source_id</code> /{' '}
+        <code>context_id</code>. The server returns its resulting context and serialized action
+        tree in the tool result&apos;s <code>_meta</code>, but by default the client only applies the
+        returned <code>ActionReturn</code>; override <code>consume_result_meta()</code> to merge
+        the remote metadata or usage.
       </p>
+      <Note>
+        <strong>Security:</strong> the snapshot includes <code>integrations</code>, including any
+        auth headers set in <code>pre_mcp</code>. Only use PyBotchi-native servers you trust, or
+        override <code>mcp_sharing_dump</code> to strip secrets.
+      </Note>
 
       <h4>Returning Values &amp; Blocking Flow</h4>
       <p>
         A server action can finish with <code>ActionReturn.stop(value=...)</code>, and that signal is
-        carried back to the client in the tool result&apos;s <code>_meta</code>. Set{' '}
-        <code>block_return=True</code> on the <code>MCPConnection</code> to honor it — the client
-        rebuilds the <code>ActionReturn</code> and can stop its own graph. Override{' '}
+        carried back to the client in the tool result&apos;s <code>_meta</code>. By default
+        (<code>block_return=False</code>) the client honors it: it rebuilds the{' '}
+        <code>ActionReturn</code> and can stop its own graph. Set <code>block_return=True</code> on
+        the <code>MCPConnection</code> to ignore it. This matches <code>GRPCConnection</code>{' '}
+        (before v4.2.1, MCP needed <code>block_return=True</code> to honor it). Override{' '}
         <code>consume_result_meta()</code> on an <code>MCPToolAction</code> to inspect the propagated
         context or customize this behavior:
       </p>
@@ -445,7 +470,7 @@ class GeneralChat(MCPAction):
             "testing",
             "SHTTP",
             "http://localhost:8000/group-1/mcp",
-            block_return=True,   # honor a server-returned ActionReturn (e.g. STOP)
+            block_return=False,   # default: honor a server-returned ActionReturn (e.g. STOP)
         )
     ]
 
@@ -453,7 +478,7 @@ class GeneralChat(MCPAction):
         async def consume_result_meta(self, context: MCPContext, meta: dict[str, Any]) -> ActionResult:
             """Inspect the propagated server context."""
             print(f"Tool result context: {meta.get('context')}")
-            # super() converts meta["return"] into an ActionReturn when block_return=True
+            # super() converts meta["return"] into an ActionReturn unless block_return=True
             return await super().consume_result_meta(context, meta)`}</CodeBlock>
 
       <h3>Using MCP with Claude Desktop</h3>

@@ -404,13 +404,21 @@ export default function GRPC() {
       </p>
       <ul>
         <li>
-          <strong>Server → Client:</strong> When the remote server adds
-          responses or updates context, changes propagate back to the client in
-          real-time.
+          <strong>Server → Client:</strong> When the remote server calls{" "}
+          <code>add_message</code>, <code>add_response</code>,{" "}
+          <code>set_metadata</code>, or <code>notify</code>, the change
+          propagates back to the client in real-time.
         </li>
         <li>
-          <strong>Client → Server:</strong> When the client updates context
-          during an active connection, changes flow to the server immediately.
+          <strong>Client → Server:</strong> The same methods called on the
+          client during an active connection flow to the server immediately.
+          Other changes (e.g. direct <code>context.metadata[...]</code>{" "}
+          mutations) aren&apos;t synced.
+        </li>
+        <li>
+          <strong>Usage:</strong> token usage arrives once, when the remote
+          action finishes, and is recorded on the proxy action (visible in{" "}
+          <code>serialize()</code>).
         </li>
         <li>
           <strong>No polling required:</strong> Context stays synchronized
@@ -435,9 +443,17 @@ export default function GRPC() {
         </p>
         <p>
           Context synchronization is <strong>fully customizable</strong>—control
-          exactly which data propagates (prompts, metadata, usage stats, or
-          custom fields) and when it syncs. Override <code>commit_context</code>{" "}
-          to implement selective propagation rules that match your architecture.
+          exactly which data propagates and when it syncs. Override the{" "}
+          <code>GRPCContext</code> methods, or the <code>grpc_event_*</code>{" "}
+          handlers on <code>GRPCRemoteAction</code> (client) and{" "}
+          <code>PyBotchiGRPC</code> (server), to implement selective
+          propagation rules that match your architecture.
+        </p>
+        <p>
+          The context sent to the server includes <code>integrations</code>{" "}
+          (with any auth metadata set in <code>pre_grpc</code>), prompts, and
+          metadata. Only connect to servers you trust, or override{" "}
+          <code>grpc_sharing_dump</code> to strip secrets.
         </p>
       </div>
 
@@ -487,7 +503,7 @@ class GeneralChat(GRPCAction):
           {
             icon: "🧩",
             title: "Unified Graph Execution",
-            body: "Remote Actions integrate seamlessly into your execution graph. Parent-child relationships, lifecycle hooks, and context flow work identically whether Actions run locally or remotely.",
+            body: "Remote Actions integrate seamlessly into your execution graph. Parent-child relationships, lifecycle hooks, and context flow work the same whether Actions run locally or remotely. On a GRPCAction, on_error and cleanup run after its connections close.",
           },
           {
             icon: "📈",
@@ -537,8 +553,10 @@ class GeneralChat(GRPCAction):
         </li>
         <li>
           <strong>Horizontal scaling:</strong> Deploy multiple servers hosting
-          specialized Action groups, with automatic load distribution across
-          instances.
+          specialized Action groups. On one host, <code>pybotchi-grpc -w</code>{" "}
+          runs several worker processes sharing the port; across hosts, put a
+          load balancer in front, since each <code>GRPCConnection</code>{" "}
+          targets a single url.
         </li>
         <li>
           <strong>Team independence:</strong> Different teams deploy and scale
@@ -599,8 +617,43 @@ class GeneralChat(GRPCAction):
         <CodeBlock language="bash">{SERVER_OUTPUT}</CodeBlock>
       </Collapsible>
 
+      <Collapsible summary="CLI Options & Server Customization">
+        <CodeBlock language="bash">{`pybotchi-grpc server.py [OPTIONS]
+
+  -i, --id TEXT                 Agent ID (env AGENT_ID; must be a Python identifier;
+                                random on each start otherwise, and used in graph node names)
+  -h, --host TEXT               Host to bind (env AGENT_HOST; default 0.0.0.0)
+  -p, --port TEXT               Port to bind (env AGENT_PORT; default 50051)
+  -w, --workers TEXT            Worker processes (env AGENT_WORKERS; default 1, capped at CPU count;
+                                workers share the port)
+  -r, --root-certificates TEXT  Root certificates path
+  -k, --private-key TEXT        Private key path      (TLS is enabled when -k and -c are both set)
+  -c, --certificate-chain TEXT  Certificate chain path
+  -a, --require-client-auth     Require client auth (takes a value, e.g. -a true)`}</CodeBlock>
+        <p>
+          To customize the server, subclass <code>PyBotchiGRPC</code> in the server file; the CLI
+          picks it up automatically. You can set <code>__context_class__</code> (your{' '}
+          <code>GRPCContext</code> subclass), <code>__allow_exec__</code>, and override{' '}
+          <code>validate_metadata</code>, which receives the request&apos;s invocation metadata and
+          returns <code>True</code> to accept it (returning <code>False</code> aborts the request
+          with <code>FAILED_PRECONDITION</code>).
+        </p>
+        <CodeBlock language="python">{`from pybotchi.grpc.handler import PyBotchiGRPC
+
+class Handler(PyBotchiGRPC):
+    async def validate_metadata(self, metadata) -> bool:
+        return dict(metadata or ()).get("x-api-key") == API_KEY`}</CodeBlock>
+      </Collapsible>
+
       <h4>Run the Client</h4>
       <CodeBlock language="bash">python3 client.py</CodeBlock>
+      <p>
+        The client passes an integration entry for every connection name it needs:{' '}
+        <code>&quot;testing&quot;</code> for its own connection, and{' '}
+        <code>&quot;testing2&quot;</code> for the server&apos;s nested connection, because
+        integrations are forwarded to the server. Connections without an entry are skipped
+        (<code>require_integration=True</code>).
+      </p>
 
       <Collapsible summary="Client Output — Execution Flow">
         <CodeBlock language="bash">{CLIENT_FLOW}</CodeBlock>

@@ -13,13 +13,13 @@ export default function Installation() {
       <p>For additional features, install optional dependencies:</p>
 
       <CodeBlock language="bash">{`# With grpc support
-pip install pybotchi[grpc]
+pip install "pybotchi[grpc]"
 
 # With mcp support
-pip install pybotchi[mcp]
+pip install "pybotchi[mcp]"
 
 # With both
-pip install pybotchi[grpc,mcp]`}</CodeBlock>
+pip install "pybotchi[grpc,mcp]"`}</CodeBlock>
 
       <h3>From Source</h3>
       <p>To install the latest development version:</p>
@@ -27,9 +27,9 @@ pip install pybotchi[grpc,mcp]`}</CodeBlock>
       <CodeBlock language="bash">{`git clone https://github.com/amadolid/pybotchi.git
 cd pybotchi
 pip install -e .
-# pip install -e .[grpc]
-# pip install -e .[mcp]
-# pip install -e .[grpc,mcp]`}</CodeBlock>
+# pip install -e ".[grpc]"
+# pip install -e ".[mcp]"
+# pip install -e ".[grpc,mcp]"`}</CodeBlock>
 
       <Note>
         <strong>Note:</strong> It&apos;s recommended to use a virtual environment to avoid

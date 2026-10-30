@@ -133,8 +133,7 @@ export default function HowItWorks() {
                 body: (
                   <>
                     The <code>post</code> hook runs after all child executions complete. Use it to
-                    consolidate results, save data, perform cleanup, logging, or prepare the final
-                    response. Like pre-execution, you have complete freedom to implement any logic
+                    consolidate results, save data, logging, or prepare the final response. Like pre-execution, you have complete freedom to implement any logic
                     needed.
                   </>
                 ),
@@ -164,6 +163,10 @@ export default function HowItWorks() {
               <div className="hook-card">
                 <strong>commit_context</strong>
                 <p>Control what data merges back to the main context—useful for reactive agents.</p>
+              </div>
+              <div className="hook-card">
+                <strong>cleanup</strong>
+                <p>Always runs when the action finishes—release resources, reset state, final logging.</p>
               </div>
             </div>
           </div>

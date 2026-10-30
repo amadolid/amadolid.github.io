@@ -99,13 +99,17 @@ class Translate(Action):
 
       <div className="lifecycle-hook-section">
         <h3 id="post">post</h3>
-        <p>Executes after child agents complete, handling result consolidation and cleanup.</p>
+        <p>Executes after child agents complete, handling result consolidation and recording.</p>
         <ul>
           <li>Consolidate results from child agent executions</li>
           <li>Data persistence (RAG, knowledge graphs, etc.)</li>
-          <li>Cleanup and recording processes</li>
+          <li>Recording processes</li>
           <li>Logging and notifications</li>
         </ul>
+        <p>
+          Doesn&apos;t run if the lifecycle was halted (<code>END</code>, <code>BREAK</code>,{' '}
+          <code>STOP</code>) or an error occurred. Use <code>cleanup</code> for anything that must always run.
+        </p>
         <CodeBlock language="python">{`from pybotchi import Action, ActionReturn, Context
 
 class GeneratePresentation(Action):
@@ -129,7 +133,7 @@ class GeneratePresentation(Action):
         await context.add_response(self, message.text)
 
         # All process here are optional and overridable
-        # Save data to db, Do cleanups, No restriction at all`}</CodeBlock>
+        # Save data to db, No restriction at all`}</CodeBlock>
       </div>
 
       <div className="lifecycle-hook-section">
@@ -268,6 +272,55 @@ class GeneratePresentation(Action):
 
         # Include additional data merging or logging here.
         # Transfer context.prompts, metadata, or any other important information.`}</CodeBlock>
+      </div>
+
+      <div className="lifecycle-hook-section">
+        <h3 id="cleanup">cleanup</h3>
+        <p>
+          Always executes when the action finishes, like a <code>finally</code> block: on success,
+          on <code>END</code>/<code>BREAK</code>/<code>STOP</code>, on errors (handled by{' '}
+          <code>on_error</code> or not), on max self recursion, and on cancellation.
+        </p>
+        <ul>
+          <li>Release resources (connections, locks, temp files)</li>
+          <li>Reset state</li>
+          <li>Final logging and metrics</li>
+        </ul>
+        <CodeBlock language="python">{`from pybotchi import Action, Context
+
+class GeneratePresentation(Action):
+    """Generate presentation based on user's query."""
+
+    # your attributes ...
+
+    async def pre(self, context: Context) -> None:
+        """Execute pre process."""
+        self._conn = await open_connection()
+
+    async def cleanup(self, context: Context) -> None:
+        """Execute cleanup process."""
+        # pre may not have run (e.g. max self recursion or an early error)
+        if (conn := getattr(self, "_conn", None)) is not None:
+            await conn.close()`}</CodeBlock>
+        <ul>
+          <li>
+            Runs before <code>commit_context</code>, so usage and metadata added to a detached
+            context are still merged into the parent.
+          </li>
+          <li>
+            May run even when <code>pre</code> didn&apos;t, so don&apos;t assume setup completed.
+          </li>
+          <li>
+            Its return value is ignored and it can&apos;t change the flow. If it raises, that error
+            replaces the action&apos;s result or original error, but <code>commit_context</code>{' '}
+            still runs.
+          </li>
+          <li>
+            For <code>MCPAction</code>/<code>GRPCAction</code>, it runs after the MCP/gRPC
+            connections are closed. Do remote cleanup in <code>post</code> or{' '}
+            <code>on_error</code>.
+          </li>
+        </ul>
       </div>
 
       <h2>Extended Life Cycle Hooks</h2>

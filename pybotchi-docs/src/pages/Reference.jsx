@@ -34,7 +34,9 @@ export default function Reference() {
             [after loop: if STOP → return early]
             [after loop: if exhausted → on_max_iteration(); if result.is_end → return early]
        └─ post(context)
-       └─ commit_context(context, child_context) in finally  [only if __detached__ = True]`}</CodeBlock>
+       └─ finally:
+            ├─ cleanup(context)  [always runs, even on END/BREAK/STOP/errors]
+            └─ commit_context(context, child_context)  [only if __detached__ = True; runs even if cleanup raises]`}</CodeBlock>
 
       {/* ================================================================ */}
       <h2 id="action-class-variables">Action Class Variables</h2>
@@ -323,7 +325,8 @@ class AdminTool(Action):
         <p>
           Set <code>False</code> internally when an exception propagates without being handled
           by <code>on_error</code>. Prevents <code>commit_context()</code> from running in the
-          <code>finally</code> block. Can also be set manually to suppress merging.
+          <code>finally</code> block. Can also be set manually to suppress merging. Doesn&apos;t
+          affect <code>cleanup</code>, which always runs.
         </p>
       </div>
 
@@ -365,8 +368,10 @@ class AdminTool(Action):
         <CodeBlock language="python">{`async def post(self, context: Context) -> ActionResult:`}</CodeBlock>
         <p>
           Called after all children complete (after the iteration loop exits).
-          Default: returns <code>None</code>. Use for consolidating results, cleanup, or final
-          LLM summarization.
+          Default: returns <code>None</code>. Use for consolidating results or final LLM
+          summarization. Skipped if the lifecycle was halted (<code>END</code>/<code>BREAK</code>/
+          <code>STOP</code>) or an error occurred; use <code>cleanup</code> for anything that must
+          always run.
         </p>
       </div>
 
@@ -475,6 +480,34 @@ class AdminTool(Action):
     parent.prompts.extend(new_messages)
     # Merge usages from parent (always call this)
     await super().commit_context(parent, child)`}</CodeBlock>
+      </div>
+
+      <div className="lifecycle-hook-section">
+        <h3>cleanup</h3>
+        <CodeBlock language="python">{`async def cleanup(self, context: Context) -> None:`}</CodeBlock>
+        <p>
+          Called in the <code>finally</code> block every time the action finishes: on success,
+          on <code>END</code>/<code>BREAK</code>/<code>STOP</code>, on errors (handled or not), on
+          max self recursion, and on cancellation. Default: does nothing. Use for releasing
+          resources, resetting state, or final logging.
+        </p>
+        <ul>
+          <li>Runs before <code>commit_context</code>, so usage/metadata added to a detached context still merges into the parent.</li>
+          <li>May run even if <code>pre</code> didn&apos;t; don&apos;t assume setup completed.</li>
+          <li>
+            Return value is ignored. If it raises, that error replaces the action&apos;s result (the
+            original error survives only as <code>__context__</code>), skips <code>on_error</code>,
+            and <code>commit_context</code> still runs.
+          </li>
+          <li>
+            Can&apos;t tell how the action ended: <code>sys.exc_info()</code> only shows unhandled
+            errors. Track the outcome on the instance if you need it.
+          </li>
+          <li>For <code>MCPAction</code>/<code>GRPCAction</code>, runs after the connections are closed.</li>
+        </ul>
+        <CodeBlock language="python">{`async def cleanup(self, context: Context) -> None:
+    if (conn := getattr(self, "_conn", None)) is not None:   # pre may not have run
+        await conn.close()`}</CodeBlock>
       </div>
 
       <div className="lifecycle-hook-section">
@@ -765,7 +798,8 @@ await context.add_response(self, msg.text)`}</CodeBlock>
         <p>
           Appends to <code>action._usage</code> and merges into <code>context.usages[model]</code>.
           <code>name</code> labels the usage record: <code>"$tool"</code>,{' '}
-          <code>"$fallback"</code>, <code>"$finalize"</code>, or a custom label.
+          <code>"$fallback"</code>, <code>"$finalize"</code> (from <code>on_max_iteration</code>,
+          unrelated to <code>cleanup</code>), or a custom label.
         </p>
       </div>
 
@@ -788,7 +822,8 @@ await context.update_metadata("results", value={"step2": "ok"})  # merge → {"s
         <p>
           No-op in the base class. Override in your custom Context for WebSocket, SSE, or
           logging. Called by the framework on: tool selection start/complete, fallback
-          start/complete, finalize start/complete, and gRPC/MCP events.
+          start/complete, finalize start/complete (<code>on_max_iteration</code>&apos;s summary
+          step, not the <code>cleanup</code> hook), and gRPC/MCP events.
         </p>
       </div>
 
@@ -1418,6 +1453,7 @@ class MyAction(Action):
     async def on_max_iteration(self, context: Context) -> ActionResult: ...
     async def on_max_self_recursion(self, context: Context) -> ActionResult: ...
     async def commit_context(self, context: Context, child: Context) -> None: ...
+    async def cleanup(self, context: Context) -> None: ...              # always runs, like finally
     async def child_selection(self, context, child_actions=None) -> tuple[list[Action], str]: ...
     def child_selection_prompt(self, context, tool_choice) -> str: ...   # sync
     def max_iteration_prompt(self, context) -> str: ...                  # sync
